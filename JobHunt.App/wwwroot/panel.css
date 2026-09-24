@@ -1,0 +1,202 @@
+/* `hidden` always wins over a component's own display (a save bar is display:flex). */
+[hidden] { display: none !important; }
+
+:root {
+  --bg: #1e1e1e;
+  --bg-2: #252526;
+  --bg-3: #2d2d2d;
+  --border: #3c3c3c;
+  /* 1.4.11 Non-text Contrast: a field's edge is what shows it's a field — 4.9:1 on --bg. */
+  --field-border: #8b8b8b;
+  --text: #e6e6e6;
+  --muted: #a8a8a8;
+  --accent: #0a66c2;
+  --accent-text: #6cb3ff;
+  --good: #3fb950;
+  --warn: #ffd54a;
+  --bad: #f47067;
+  --radius: 6px;
+  --font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f6f7f9;
+  --bg-2: #ffffff;
+  --bg-3: #eceef1;
+  --border: #d0d4d8;
+  --field-border: #7d8590;
+  --text: #1b1f24;
+  --muted: #57606a;
+  --accent-text: #0a66c2;
+  --good: #1a7f37;
+  --warn: #7a5a00;
+  --bad: #c62828;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 8px; }
+.muted { color: var(--muted); }
+code { font-family: Consolas, monospace; font-size: 12px; }
+
+.top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 20px;
+  padding: 10px 16px; background: var(--bg-2); border-bottom: 1px solid var(--border); }
+.tabs { display: flex; gap: 4px; }
+.tabs button { background: none; border: 0; color: var(--muted); padding: 8px 12px; border-radius: var(--radius);
+  font: inherit; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--text); background: var(--bg-3); font-weight: 600; }
+.tabs button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+main { padding: 14px 16px 40px; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.check { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.check.strong { font-weight: 600; }
+label { display: block; margin: 10px 0; }
+input[type=number], input[type=text], input[type=email], input[type=tel], input[type=url], input[type=month], select, input[type=password], textarea {
+  display: block; margin-top: 4px; width: 100%; max-width: 420px; padding: 7px 9px;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font: inherit; }
+button { background: var(--bg-3); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 7px 14px; font: inherit; cursor: pointer; }
+button:hover { border-color: var(--accent-text); }
+.actions { display: flex; gap: 8px; margin: 12px 0; }
+.card { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; }
+.empty { padding: 24px 4px; }
+.empty ol { padding-left: 20px; }
+
+.job-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.job { display: grid; grid-template-columns: auto 52px 1fr; gap: 12px; align-items: center; padding: 10px 12px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
+.job[aria-current="true"] { border-color: var(--accent-text); }
+.score { font-size: 20px; font-weight: 700; text-align: center; }
+.score.high { color: var(--good); } .score.mid { color: var(--warn); } .score.low { color: var(--muted); }
+.job .title { font-weight: 600; }
+.job .meta { color: var(--muted); font-size: 12.5px; }
+.chip { display: inline-block; padding: 1px 8px; margin-right: 4px; border-radius: 999px; background: var(--bg-3);
+  font-size: 12px; color: var(--text); }
+
+.detail { margin-top: 14px; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.detail h2 { font-size: 17px; }
+.detail ul { padding-left: 20px; }
+.breakdown { width: 100%; border-collapse: collapse; font-size: 13px; }
+.breakdown td { padding: 4px 6px; border-top: 1px solid var(--border); }
+.bar { height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; min-width: 80px; }
+.bar > span { display: block; height: 100%; background: var(--accent-text); }
+.flag { color: var(--bad); }
+
+.log { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.log th, .log td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.log .dry { color: var(--warn); font-size: 12px; font-weight: 600; }
+.provider-row { display: grid; grid-template-columns: 180px 1fr auto; gap: 10px; align-items: start; padding: 10px 0;
+  border-top: 1px solid var(--border); }
+.provider-row textarea { min-height: 38px; resize: vertical; font-family: Consolas, monospace; font-size: 12px; }
+.key-state { font-size: 12px; }
+.key-state.ok { color: var(--good); }
+
+/* Above the sticky save bars, so a message never covers Save. */
+.toast { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); background: var(--bg-3);
+  border: 1px solid var(--border); padding: 8px 14px; border-radius: var(--radius); max-width: 90%; }
+.toast.error { border-color: var(--bad); }
+
+@media (prefers-reduced-motion: no-preference) { .job { transition: border-color .12s; } }
+
+/* ── header: applicant picker ─────────────────────────────────────────────── */
+.top { flex-direction: column; align-items: stretch; gap: 8px; }
+.brand-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.user-bar { display: flex; gap: 6px; align-items: center; }
+.user-bar select { min-width: 220px; margin: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tabs { flex-wrap: wrap; }
+
+/* ── views and forms ──────────────────────────────────────────────────────── */
+.view-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.view-head h2 { font-size: 17px; margin: 0; }
+details.section { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
+details.section > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; list-style-position: inside; }
+details.section[open] > summary { border-bottom: 1px solid var(--border); }
+.section-body { padding: 10px 14px 14px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; }
+.field { min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.field > label { display: block; margin: 8px 0 3px; font-size: 13px; color: var(--muted); }
+.field > label.check { color: var(--text); font-size: 14px; margin: 12px 0 4px; }
+.field input:not([type=checkbox]), .field select, .field textarea { display: block; width: 100%; max-width: none; margin: 0; }
+fieldset.group { border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px 12px; margin: 8px 0; min-width: 0; }
+fieldset.group > legend { padding: 0 6px; font-size: 13px; font-weight: 600; }
+.help { font-size: 12.5px; margin: 4px 0; }
+.list-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px 12px; margin: 8px 0; background: var(--bg); }
+.list-item .list-item { background: var(--bg-2); }
+.list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.list-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-tools { display: flex; gap: 4px; flex-shrink: 0; }
+button.small { padding: 3px 9px; font-size: 12.5px; }
+button.add { margin-top: 6px; border-style: dashed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.primary:hover { background: #004182; }
+button:disabled { opacity: .5; cursor: default; }
+.checks { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 4px 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 5px 6px; min-height: 36px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); cursor: text; }
+.tags input { flex: 1 1 140px; border: 0 !important; outline: none; padding: 3px 4px !important; background: transparent; width: auto !important; }
+.tag { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-3); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 13px; }
+.tag-x { border: 0; background: none; padding: 0 5px; font-size: 15px; line-height: 1; color: var(--muted); }
+.tag-x:hover { color: var(--bad); }
+.save-bar { position: sticky; bottom: 0; display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+  padding: 10px 0; margin-top: 8px; background: var(--bg); border-top: 1px solid var(--border); }
+.save-bar > span { margin-right: auto; }
+.preview { padding-left: 18px; }
+.preview li { margin: 6px 0; }
+ul.plain { list-style: none; padding: 0; margin: 0; }
+ul.plain li { padding: 4px 0; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* ── WCAG 2.2 AA ─────────────────────────────────────────────────────────────
+   2.4.11 Focus Not Obscured: the sticky header and save bar never cover the focused control —
+   the browser scrolls focus clear of them. 2.4.7 Focus Visible: every focusable thing gets the
+   same ring. 2.5.8 Target Size: every control is at least 24×24 CSS px. */
+html { scroll-padding-top: 140px; scroll-padding-bottom: 84px; }
+textarea:focus-visible, summary:focus-visible, a:focus-visible, [tabindex]:focus-visible,
+.tags input:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.tags:focus-within { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.tags input:focus-visible { outline: none; }
+::placeholder { color: var(--muted); opacity: 1; }
+input[type=checkbox] { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex-shrink: 0; }
+label.check, .check { min-height: 24px; }
+button { min-height: 32px; }
+button.small { min-height: 28px; min-width: 28px; }
+.tag-x { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
+.group-label { display: block; margin: 8px 0 3px; font-size: 13px; color: var(--muted); }
+.job-title { background: none; border: 0; padding: 0; margin: 0; min-height: 24px; color: var(--text); font: inherit;
+  font-weight: 600; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; }
+.job-title:hover { text-decoration-color: currentColor; border: 0; }
+[aria-invalid="true"] { border-color: var(--bad) !important; }
+.table-wrap { overflow-x: auto; }
+.breakdown th { text-align: left; font-weight: normal; padding: 4px 6px; border-top: 1px solid var(--border); }
+@media (max-width: 560px) {
+  .provider-row { grid-template-columns: 1fr; }
+  .user-bar { flex-wrap: wrap; }
+  .user-bar select { min-width: 0; flex: 1 1 100%; }
+  .job { grid-template-columns: auto 40px 1fr; gap: 8px; }
+  main { padding: 12px 10px 40px; }
+}
+
+/* 1.4.11: every text field, select and keyword box is outlined at 3:1 or better. */
+input:not([type=checkbox]), select, textarea, .tags { border-color: var(--field-border); }
+.tags input { border: 0 !important; }
+
+/* Month/date fields are two Tab stops (month, then year) inside the browser's own shadow DOM; on
+   the second one neither :focus nor :focus-visible matches the field, so the ring would vanish.
+   :focus-within still does (2.4.7). */
+input[type=month]:focus, input[type=date]:focus,
+input[type=month]:focus-within, input[type=date]:focus-within { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+.hunt-status { background: var(--bg-2); border: 1px solid var(--border); border-left: 3px solid var(--accent-text);
+  border-radius: var(--radius); padding: 8px 12px; margin: 0 0 10px; }
+
+.key-tools { display: flex; flex-direction: column; gap: 6px; }
+
+.acct-status { margin: 4px 0 8px; padding: 8px 12px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--border); }
+.acct-status.ok { border-left: 3px solid var(--good); }
+details.optional { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+details.optional > summary { cursor: pointer; font-weight: 600; min-height: 24px; }

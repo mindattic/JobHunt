@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>JobHunt.Core</RootNamespace>
+    <AssemblyName>JobHunt.Core</AssemblyName>
+    <!-- Whole-number versioning: major-only bumps (1.0.0 -> 2.0.0 -> 3.0.0). Minor/patch stay 0. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoWebNav" Version="1.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.5" />
+    <PackageReference Include="MindAttic.Legion" Version="26.0.0" />
+    <PackageReference Include="MindAttic.Vault" Version="5.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.11" />
+    <!-- EF Core 10.0.9 pulls native SQLite 2.1.11, which bundles SQLite < 3.50.2
+         (GHSA-2m69-gcr7-jv3q, memory corruption). Pinned to a patched native build. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- LogicalName pins the names LinkedInScripts.Load asks for; tools/verify-linkedin.mjs reads the same files. -->
+    <EmbeddedResource Include="Boards\LinkedIn\Scripts\*.js" LogicalName="JobHunt.LinkedIn.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="JobHunt.Tests" />
+  </ItemGroup>
+
+</Project>

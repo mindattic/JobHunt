@@ -1,0 +1,13 @@
+{
+  "name": "jobhunt-verify-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "verify-ui": "node verify-ui.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.10.2",
+    "jsdom": "^25.0.1",
+    "playwright-core": "1.62.1"
+  }
+}

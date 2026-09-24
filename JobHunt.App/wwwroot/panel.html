@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <title>JobHunt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand-row">
+      <h1>JobHunt</h1>
+      <div class="user-bar" role="group" aria-label="Applicant">
+        <label for="user-picker" class="sr-only">Applicant</label>
+        <select id="user-picker"></select>
+        <button id="user-add" type="button">Add</button>
+        <button id="user-edit" type="button">Edit</button>
+        <button id="user-delete" type="button">Delete</button>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" id="tab-applicant" aria-controls="view-applicant" aria-selected="true">Applicant</button>
+      <button role="tab" id="tab-requirements" aria-controls="view-requirements" aria-selected="false">Job Requirements</button>
+      <button role="tab" id="tab-jobs" aria-controls="view-jobs" aria-selected="false">Best Fits</button>
+      <button role="tab" id="tab-applications" aria-controls="view-applications" aria-selected="false">Applications</button>
+      <button role="tab" id="tab-settings" aria-controls="view-settings" aria-selected="false">Settings</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Everything an application asks for, entered once -->
+    <section id="view-applicant" role="tabpanel" aria-labelledby="tab-applicant">
+      <div class="view-head">
+        <h2 id="applicant-title">Applicant</h2>
+        <div class="actions">
+          <button id="import-profile" type="button">Import applicant…</button>
+          <button id="export-profile" type="button">Export this applicant…</button>
+        </div>
+      </div>
+      <div id="applicant-sections"></div>
+      <div class="save-bar">
+        <span id="applicant-dirty" class="muted" hidden>Unsaved changes</span>
+        <button id="applicant-discard" type="button">Discard changes</button>
+        <button id="applicant-save" type="button" class="primary">Save applicant</button>
+      </div>
+    </section>
+
+    <!-- What to search for, and what to rule out -->
+    <section id="view-requirements" role="tabpanel" aria-labelledby="tab-requirements" hidden>
+      <div class="view-head"><h2>Job requirements</h2></div>
+      <p id="requirements-none" class="empty">Add an applicant first. Their job requirements start from their "What I want next" answers.</p>
+      <div id="requirements-form"></div>
+      <div class="card" id="requirements-preview-card">
+        <h3>The LinkedIn searches this runs</h3>
+        <ul id="requirements-preview" class="preview"></ul>
+      </div>
+      <div class="save-bar" id="requirements-actions">
+        <span id="requirements-dirty" class="muted" hidden>Unsaved changes</span>
+        <button id="requirements-preview-btn" type="button">Save &amp; show on LinkedIn</button>
+        <button id="requirements-save" type="button">Save requirements</button>
+        <button id="requirements-hunt" type="button" class="primary">Save &amp; hunt now</button>
+      </div>
+    </section>
+
+    <!-- Best fits, best first -->
+    <section id="view-jobs" role="tabpanel" aria-labelledby="tab-jobs" hidden>
+      <p id="hunt-status" class="hunt-status" role="status" aria-live="polite" hidden></p>
+      <div class="toolbar">
+        <label class="check"><input type="checkbox" id="select-all"> Select all</label>
+        <span id="jobs-count" class="muted"></span>
+      </div>
+      <ul id="job-list" class="job-list" aria-label="Best-fit jobs"></ul>
+      <div id="jobs-empty" class="empty" hidden>
+        <h2>No best fits yet</h2>
+        <ol>
+          <li>Fill in the <strong>Applicant</strong> tab (or import one).</li>
+          <li>Set the <strong>Job Requirements</strong>.</li>
+          <li>Add an LLM key on the <strong>Settings</strong> tab.</li>
+        </ol>
+        <p>Then click <strong>Hunt now</strong> (Alt+H) at the bottom of the window.</p>
+      </div>
+      <article id="job-detail" class="detail" hidden aria-live="polite"></article>
+    </section>
+
+    <!-- Everything applied to (and every dry run), with what happened afterwards -->
+    <section id="view-applications" role="tabpanel" aria-labelledby="tab-applications" hidden>
+      <label class="check"><input type="checkbox" id="show-dry-runs" checked> Show dry runs</label>
+      <div class="table-wrap">
+        <table class="log">
+          <caption class="sr-only">Applications, newest first</caption>
+          <thead><tr><th scope="col">Date</th><th scope="col">Job</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Kind</span></th></tr></thead>
+          <tbody id="application-rows"></tbody>
+        </table>
+      </div>
+      <p id="applications-empty" class="empty" hidden>Nothing applied to yet.</p>
+    </section>
+
+    <section id="view-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+      <div class="card">
+        <h2>Applying</h2>
+        <label class="check strong"><input type="checkbox" id="dry-run"> Dry run (recommended until you trust it)</label>
+        <p class="muted">Dry run does everything a real application does (opens the posting, fills every field,
+          uploads your résumé and cover letter, answers the questions) and stops just before the final
+          <em>Submit</em>. It's logged like a real application. Nothing reaches the employer.</p>
+        <label>Real applications per day
+          <input type="number" id="daily-cap" min="1" max="200">
+        </label>
+        <label class="check"><input type="checkbox" id="preflight"> Collect each job's screening questions while hunting</label>
+      </div>
+
+      <div class="card">
+        <h2>Your AI provider</h2>
+        <p class="muted">JobHunt uses the LLM you choose to summarize postings and tailor your documents. Bring your own
+          API key. It is stored in MindAttic Vault on this computer, never in the JobHunt database or an export.</p>
+        <label>Use first
+          <select id="provider"></select>
+        </label>
+        <div id="provider-keys"></div>
+      </div>
+
+      <div class="card">
+        <h2>Backup &amp; restore</h2>
+        <p class="muted">Everything JobHunt knows in one <code>.jobhunt-backup.json</code> file: every applicant, their
+          requirements, jobs, and applications with their history. Importing one replaces what's here. API keys and
+          job-site passwords are never included.</p>
+        <div class="actions">
+          <button id="export-backup" type="button">Export everything…</button>
+          <button id="import-backup" type="button">Import a backup…</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Deleted applicants</h2>
+        <p class="muted">Deleting an applicant hides them. Their data stays until you restore them.</p>
+        <ul id="deleted-users" class="plain"></ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- 4.1.3 Status Messages: confirmations are polite; errors are assertive. -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="toast-alert" class="toast error" role="alert" hidden></div>
+  <script src="forms.js"></script>
+  <script src="applicant.js"></script>
+  <script src="requirements.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
