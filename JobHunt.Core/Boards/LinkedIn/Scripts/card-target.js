@@ -1,6 +1,14 @@
 // Finds the clickable title of the card for job __JOB_ID__, scrolls it into view, and returns its
 // center for a trusted click. JSON { found, x, y }.
 (function (jobId) {
+  // 2026 layout: the clickable card is the div[role=button] keyed job-card-component-ref-<id>.
+  var sdui = document.querySelector('[componentkey="job-card-component-ref-' + jobId + '"][role="button"]')
+    || document.querySelector('[componentkey="job-card-component-ref-' + jobId + '"]');
+  if (sdui) {
+    sdui.scrollIntoView({ block: 'center' });
+    var sr = sdui.getBoundingClientRect();
+    return JSON.stringify({ found: sr.width > 0 && sr.height > 0, x: sr.left + Math.min(sr.width / 2, 60), y: sr.top + Math.min(sr.height / 2, 30) });
+  }
   var card = document.querySelector('[data-occludable-job-id="' + jobId + '"], [data-job-id="' + jobId + '"], [data-entity-urn$=":' + jobId + '"]');
   var link = card
     ? card.querySelector('a.job-card-list__title--link, a.job-card-container__link, a.job-card-list__title, a.base-card__full-link, a[href*="/jobs/view/"]')

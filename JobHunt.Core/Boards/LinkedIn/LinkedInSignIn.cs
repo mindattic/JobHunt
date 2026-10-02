@@ -4,20 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace JobHunt.Core.Boards.LinkedIn;
 
-public enum SignInStatus
-{
-    AlreadySignedIn,
-    SignedIn,
-    /// <summary>No password saved (or auto sign-in is off) — the user signs in in the pane.</summary>
-    NoCredentials,
-    /// <summary>LinkedIn asked for a verification code, CAPTCHA or security check. Only a person
-    /// may answer those; the pane is left on that page for the user.</summary>
-    NeedsYou,
-    /// <summary>LinkedIn rejected the email/password, or the page never settled.</summary>
-    Failed,
-}
-
-public sealed record SignInResult(SignInStatus Status, string Message);
+using JobHunt.Core.Boards;
 
 /// <summary>
 /// Signs in to LinkedIn with the saved account when the pane is signed out. It types into the real
@@ -26,7 +13,7 @@ public sealed record SignInResult(SignInStatus Status, string Message);
 /// account holder, and automating past them is exactly what gets accounts restricted.
 /// The password is never logged.
 /// </summary>
-public sealed class LinkedInSignIn(ILogger<LinkedInSignIn> log)
+public sealed class LinkedInSignIn(ILogger<LinkedInSignIn> log) : IBoardSignIn
 {
     /// <summary>Delay between page checks while waiting for the sign-in to land. Lowered in tests.</summary>
     public int PollIntervalMs { get; init; } = 500;
@@ -40,7 +27,11 @@ public sealed class LinkedInSignIn(ILogger<LinkedInSignIn> log)
             || !!document.querySelector('iframe[src*="captcha"], #captcha-internal, input[name="pin"], #input__phone_verification_pin');
           var user = document.querySelector('#username, input[name="session_key"]');
           var pass = document.querySelector('#password, input[name="session_password"]');
-          var signedIn = !!document.querySelector('#global-nav .global-nav__me, .global-nav__me-photo, [data-control-name="nav.settings"], ' +
+          // The 2026 nav has hashed class names; its stable hooks are data-view-name. "Me" and
+          // Messaging render only for a signed-in member (read live 2026-09-30). The older
+          // global-nav selectors stay as fallbacks for the previous layout.
+          var signedIn = !!document.querySelector('[data-view-name="navigation-settings"], [data-view-name="navigation-messaging"], ' +
+            '#global-nav .global-nav__me, .global-nav__me-photo, [data-control-name="nav.settings"], ' +
             'header.global-nav, nav.global-nav, .global-nav__primary-link-me-menu-trigger, img.global-nav__me-photo, a[href*="/mynetwork/"][class*="global-nav"]');
           var errorEl = document.querySelector('#error-for-password, #error-for-username, .form__label--error, .alert-content');
           return JSON.stringify({

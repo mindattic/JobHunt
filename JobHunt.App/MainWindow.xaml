@@ -88,13 +88,34 @@
                       ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
                       AutomationProperties.Name="Panel width" />
 
-        <!-- The job board itself. The WebView2 is created in code for the active applicant, over
-             that applicant's own persistent browser profile, so each one signs in once and never
-             sees another applicant's session. -->
-        <Grid x:Name="BoardHost" Grid.Row="0" Grid.Column="2">
-            <TextBlock x:Name="BoardPlaceholder" Foreground="#B8B8B8" FontSize="15" TextWrapping="Wrap"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420" TextAlignment="Center"
-                       Text="Add an applicant on the left. LinkedIn opens here, signed in as them." />
+        <!-- The job boards themselves. Each board gets its own WebView2, created in code for the
+             active applicant over that applicant's own persistent browser profile, so each one
+             signs in once and never sees another applicant's session — and kept alive once
+             created, so switching board tabs never loses a session. Only an applicant switch
+             tears every pane down (a different person's browser profile entirely). -->
+        <Grid Grid.Row="0" Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel x:Name="BoardTabs" Grid.Row="0" Orientation="Horizontal" Background="#252526" />
+
+            <DockPanel Grid.Row="1" Background="#2D2D2D" LastChildFill="True" Margin="0" >
+                <Button x:Name="ReloadButton" DockPanel.Dock="Left" Content="⟳" Width="32" Margin="6,6,0,6"
+                        Style="{StaticResource BarButton}" Padding="0" Click="OnReloadClicked"
+                        ToolTip="Reload this board's page" AutomationProperties.Name="Reload" />
+                <TextBox x:Name="UrlBar" Margin="6" Padding="6,4" VerticalContentAlignment="Center"
+                         Background="#1E1E1E" Foreground="#E6E6E6" BorderBrush="#444"
+                         KeyDown="OnUrlBarKeyDown" AutomationProperties.Name="Address" />
+            </DockPanel>
+
+            <Grid x:Name="BoardHost" Grid.Row="2">
+                <TextBlock x:Name="BoardPlaceholder" Foreground="#B8B8B8" FontSize="15" TextWrapping="Wrap"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420" TextAlignment="Center"
+                           Text="Add an applicant on the left. LinkedIn opens here, signed in as them." />
+            </Grid>
         </Grid>
 
         <!-- Native command bar, outside both browser panes. -->

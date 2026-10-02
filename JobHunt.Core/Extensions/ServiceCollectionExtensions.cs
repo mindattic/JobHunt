@@ -1,4 +1,6 @@
+using AutoWebNav;
 using JobHunt.Core.Boards;
+using JobHunt.Core.Boards.Indeed;
 using JobHunt.Core.Boards.LinkedIn;
 using JobHunt.Core.Data;
 using JobHunt.Core.Hunting;
@@ -39,10 +41,18 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<HuntRunner>();
         services.AddSingleton<FitScorer>();
 
+        services.AddSingleton<FingerprintResolver>();
+
         services.AddSingleton<IJobBoard, LinkedInJobBoard>();
+        services.AddSingleton<LinkedInSignIn>();
+        services.AddKeyedSingleton<IBoardSignIn, LinkedInSignIn>(LinkedInJobBoard.BoardId, (sp, _) => sp.GetRequiredService<LinkedInSignIn>());
+
+        services.AddSingleton<IJobBoard, IndeedJobBoard>();
+        services.AddKeyedSingleton<IBoardSignIn, FingerprintBoardSignIn>(IndeedJobBoard.BoardId, (sp, _) => new FingerprintBoardSignIn(
+            sp.GetRequiredService<FingerprintResolver>(), IndeedSignInProfile.Build(), sp.GetRequiredService<ILogger<FingerprintBoardSignIn>>()));
+
         services.AddSingleton<JobBoardRegistry>();
         services.AddSingleton<BoardPasswords>();
-        services.AddSingleton<LinkedInSignIn>();
 
         services.AddSingleton<ByokKeys>();
         services.AddHttpClient("legion", c => c.Timeout = TimeSpan.FromMinutes(3));

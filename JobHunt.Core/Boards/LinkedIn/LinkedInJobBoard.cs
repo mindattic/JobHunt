@@ -38,6 +38,15 @@ public sealed class LinkedInJobBoard(ILoggerFactory? logs = null, string? baseUr
     public string? SessionCookieName => "li_at";
     public string QuickApplyName => "Easy Apply";
 
+    /// <summary>The messaging overlay (inside the #interop-outlet shadow root on the 2026 site) and
+    /// the "Get job alerts for this search" aside. Both read live 2026-09-30.</summary>
+    public IReadOnlyList<string> HiddenClutter =>
+    [
+        "#msg-overlay",
+        ".msg-overlay-list-bubble",
+        "div:has(> div > [data-view-name=\"job-search-job-alert-toggle\"])",
+    ];
+
     /// <summary>
     /// LinkedIn's salary filter only offers fixed "$N+" buckets. The minimum is rounded DOWN to a
     /// bucket so no qualifying job is lost server-side; <see cref="Scoring.FitScorer"/> then applies

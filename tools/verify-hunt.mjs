@@ -92,8 +92,8 @@ const app = spawn(exe, [], {
   env: {
     ...process.env,
     JOBHUNT_DATA_DIR: path.join(scratch, 'data'), JOBHUNT_DOCUMENTS_DIR: path.join(scratch, 'docs'), JOBHUNT_SECRETS_DIR: path.join(scratch, 'secrets'),
+    // The app opens CDP on 9366 (panel) and 9367 (board panes) itself — see MainWindow.PanelDebugPort.
     JOBHUNT_LINKEDIN_BASE_URL: base,
-    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${cdpPort}`,
   },
   stdio: 'ignore',
 });

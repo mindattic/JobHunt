@@ -14,6 +14,9 @@ Thumbs.db
 .DS_Store
 
 .claude/quicksave.md
+# /quicksave handoffs and their archives (shared runner) — session notes, not source.
+.prose/agent-session.json*
+.prose/agent-queue.json*
 
 ## Node (tools/verify-ui.mjs)
 tools/node_modules/

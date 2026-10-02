@@ -56,6 +56,48 @@
   }
   if (/\/authwall|\/login|\/signup/i.test(url)) return JSON.stringify({ state: 'signedOut', cards: [] });
 
+  // ── The 2026 layout (/jobs/search-results/, read live 2026-09-30) ──────────────────────────
+  // Hashed class names everywhere; the stable hooks are data-view-name and the card's
+  // componentkey="job-card-component-ref-<id>". Text is read as visible text pieces (aria-hidden
+  // subtrees skipped), which drops the duplicate title LinkedIn renders for screen readers.
+  function pieces(el) {
+    var out = [];
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (var t = walker.nextNode(); t; t = walker.nextNode()) {
+      var s = clean(t.textContent);
+      if (s && !t.parentElement.closest('[aria-hidden="true"], button')) out.push(s);
+    }
+    return out;
+  }
+  var sdui = document.querySelectorAll('[data-view-name="job-search-job-card"]');
+  if (sdui.length) {
+    var newCards = [];
+    var newSeen = {};
+    for (var k = 0; k < sdui.length; k++) {
+      var c = sdui[k];
+      var keyEl = c.querySelector('[componentkey^="job-card-component-ref-"]') || c.closest('[componentkey^="job-card-component-ref-"]');
+      var key = keyEl && keyEl.getAttribute('componentkey').replace('job-card-component-ref-', '');
+      if (!key || !/^\d+$/.test(key) || newSeen[key]) continue;
+      newSeen[key] = true;
+      var p = pieces(c);
+      // The Dismiss button names the job exactly; the visible first piece carries a screen-reader
+      // " (Verified job)" suffix.
+      var dismiss = c.querySelector('button[data-view-name="dismiss-job"]');
+      var dm = dismiss && (dismiss.getAttribute('aria-label') || '').match(/^Dismiss (.+) job$/);
+      newCards.push({
+        id: key,
+        title: dm ? clean(dm[1]) : (p[0] || '').replace(/\s*\(Verified job\)$/i, ''),
+        company: p[1] || '',
+        location: p[2] || '',
+        quickApply: p.some(function (s) { return /^easy apply$/i.test(s); }),
+        applied: p.some(function (s) { return /^applied\b/i.test(s); }),
+        promoted: p.some(function (s) { return /^promoted\b/i.test(s); }),
+      });
+    }
+    if (newCards.length) return JSON.stringify({ state: 'results', cards: newCards });
+  }
+
+  // ── The previous layout (job-card-container / base-card) ───────────────────────────────────
   var CARD = 'li[data-occludable-job-id], div[data-job-id], .job-card-container, li.jobs-search-results__list-item, ' +
     '.scaffold-layout__list-item, ul.jobs-search__results-list > li, .base-card[data-entity-urn*="jobPosting"], .job-search-card';
   var candidates = document.querySelectorAll(CARD);

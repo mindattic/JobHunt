@@ -135,6 +135,8 @@ button.add { margin-top: 6px; border-style: dashed; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 button.primary:hover { background: #004182; }
 button:disabled { opacity: .5; cursor: default; }
+button.recording { background: #C7221F; border-color: #C7221F; color: #fff; }
+button.recording:hover { background: #A11B18; border-color: #A11B18; }
 .checks { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 4px 0; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 5px 6px; min-height: 36px;
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); cursor: text; }

@@ -42,16 +42,40 @@ public partial class MainWindow : Window
     private readonly SettingsStore settings = App.Services.GetRequiredService<SettingsStore>();
     private readonly ByokKeys keys = App.Services.GetRequiredService<ByokKeys>();
     private readonly BoardPasswords passwords = App.Services.GetRequiredService<BoardPasswords>();
-    private readonly LinkedInSignIn linkedInSignIn = App.Services.GetRequiredService<LinkedInSignIn>();
     private readonly DatabaseTransfer transfer = App.Services.GetRequiredService<DatabaseTransfer>();
     private readonly HuntRunner hunter = App.Services.GetRequiredService<HuntRunner>();
-    private readonly IJobBoard board = App.Services.GetRequiredService<JobBoardRegistry>().Get(LinkedInJobBoard.BoardId);
+    private readonly JobBoardRegistry boardRegistry = App.Services.GetRequiredService<JobBoardRegistry>();
     private readonly ILogger<MainWindow> log = App.Services.GetRequiredService<ILogger<MainWindow>>();
 
-    /// <summary>The live job-board page for the active applicant, for the search and apply engines.</summary>
+    /// <summary>Whichever board the pane on the right is currently showing for the active
+    /// applicant. Switched by <see cref="ShowBoardForAsync"/>/<see cref="SwapBoardAsync"/> — never
+    /// assigned directly elsewhere, so it always agrees with <see cref="boardSignIn"/>.</summary>
+    private IJobBoard board = App.Services.GetRequiredService<JobBoardRegistry>().Get(LinkedInJobBoard.BoardId);
+    private IBoardSignIn boardSignIn = App.Services.GetRequiredKeyedService<IBoardSignIn>(LinkedInJobBoard.BoardId);
+
+    /// <summary>One board's WebView2, its <see cref="IBrowserSurface"/>, and its Spectator Mode
+    /// session — created once per (applicant, board) and kept alive for as long as that applicant
+    /// is active, so switching board tabs never loses a session. Only an applicant switch tears
+    /// these down (a different person's browser profile entirely).</summary>
+    private sealed class BoardPane
+    {
+        public required WebView2 View { get; init; }
+        public required WebView2BrowserSurface Surface { get; init; }
+        public required RecorderSession Spectator { get; init; }
+        public readonly List<RecorderEvent> SpectatorEvents = [];
+    }
+
+    /// <summary>Every board pane created for the CURRENT applicant, keyed by board id. Cleared and
+    /// disposed whenever the applicant changes.</summary>
+    private readonly Dictionary<string, BoardPane> panes = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The live job-board page for the active applicant, for the search and apply engines.
+    /// Always <see cref="panes"/>[<see cref="activeBoardId"/>]'s own — never assigned except by
+    /// <see cref="SwapBoardAsync"/>, so every other method can keep reading it as a plain field.</summary>
     private IBrowserSurface? boardSurface;
     private WebView2? boardView;
     private int? boardUserId;
+    private string activeBoardId = LinkedInJobBoard.BoardId;
     private int selectedCount;
     private CancellationTokenSource? huntCts;
     /// <summary>True from the moment a hunt is asked for (sign-in included) until it has fully ended —
@@ -65,7 +89,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Title = $"JobHunt - PID: {Environment.ProcessId}";
         ApplyDryRunBadge();
+        UpdateBoardTabs();
         _ = InitializePanelAsync();
 #if DEBUG
         KeyDown += (_, e) =>
@@ -78,9 +104,19 @@ public partial class MainWindow : Window
 
     // ── panes ──────────────────────────────────────────────────────────────────────────────────
 
+    /// <summary>CDP debug ports, one per WebView2 browser process: each profile folder is its own
+    /// process and only one process can hold a port. tools/inspect-board.mjs attaches to these.
+    /// Unauthenticated and local-only, open for as long as JobHunt runs.</summary>
+    private const int PanelDebugPort = 9366;
+    private const int BoardDebugPort = 9367;
+
+    private static CoreWebView2EnvironmentOptions DebugPortOptions(int port) =>
+        new() { AdditionalBrowserArguments = $"--remote-debugging-port={port}" };
+
     private async Task InitializePanelAsync()
     {
-        var env = await CoreWebView2Environment.CreateAsync(userDataFolder: paths.PanelProfileDirectory);
+        var env = await CoreWebView2Environment.CreateAsync(
+            userDataFolder: paths.PanelProfileDirectory, options: DebugPortOptions(PanelDebugPort));
         await Panel.EnsureCoreWebView2Async(env);
         Panel.CoreWebView2.SetVirtualHostNameToFolderMapping(
             "jobhunt.local", Path.Combine(AppContext.BaseDirectory, "wwwroot"), CoreWebView2HostResourceAccessKind.Allow);
@@ -93,13 +129,13 @@ public partial class MainWindow : Window
     /// it is created, so a different applicant means a new WebView2 over that applicant's own
     /// profile folder — never someone else's LinkedIn session.
     /// </summary>
-    private async Task ShowBoardForAsync(int? userId)
+    private async Task ShowBoardForAsync(int? userId, string? requestedBoardId = null)
     {
         // One switch at a time: tearing a WebView2 down while it is still initializing aborts it.
         await boardGate.WaitAsync();
         try
         {
-            if (!await SwapBoardAsync(userId)) return;
+            if (!await SwapBoardAsync(userId, requestedBoardId)) return;
         }
         finally
         {
@@ -111,23 +147,49 @@ public partial class MainWindow : Window
 
     private readonly SemaphoreSlim boardGate = new(1, 1);
 
-    /// <summary>Replaces the board pane; false when it was already showing that applicant.</summary>
-    private async Task<bool> SwapBoardAsync(int? userId)
+    /// <summary>Shows the board pane; false when it was already showing that applicant and board.
+    /// A null <paramref name="requestedBoardId"/> keeps whichever board is already active (used on
+    /// an applicant switch, which doesn't change the board). A board already open for this
+    /// applicant is just shown again — never recreated, so its session and any Spectator Mode
+    /// recording in progress survive switching tabs. Only an applicant switch tears every pane
+    /// down, since each one belongs to that applicant's own browser profile.</summary>
+    private async Task<bool> SwapBoardAsync(int? userId, string? requestedBoardId = null)
     {
-        if (userId == boardUserId && (boardView != null || userId is null)) return false;
+        var targetBoardId = requestedBoardId ?? activeBoardId;
+        if (userId == boardUserId && targetBoardId == activeBoardId && (boardView != null || userId is null)) return false;
 
-        if (boardView != null)
+        if (userId != boardUserId)
         {
-            BoardHost.Children.Remove(boardView);
-            boardView.Dispose();
-            boardView = null;
-            boardSurface = null;
+            foreach (var old in panes.Values)
+            {
+                BoardHost.Children.Remove(old.View);
+                old.View.Dispose();
+            }
+            panes.Clear();
         }
         boardUserId = userId;
+        activeBoardId = targetBoardId;
+        board = boardRegistry.Get(activeBoardId);
+        boardSignIn = App.Services.GetRequiredKeyedService<IBoardSignIn>(activeBoardId);
         boardSignedIn = null;
+        boardView = null;
+        boardSurface = null;
+        UpdateBoardTabs();
         UpdateHuntButton();
         BoardPlaceholder.Visibility = userId is null ? Visibility.Visible : Visibility.Collapsed;
         if (userId is not { } id) return false;
+
+        foreach (var other in panes.Values) other.View.Visibility = Visibility.Collapsed;
+
+        if (panes.TryGetValue(activeBoardId, out var existing))
+        {
+            existing.View.Visibility = Visibility.Visible;
+            boardView = existing.View;
+            boardSurface = existing.Surface;
+            UpdateUrlBar();
+            UpdateHuntButton();
+            return true;
+        }
 
         var view = new WebView2();
         BoardHost.Children.Add(view);
@@ -137,17 +199,16 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(folder);
         try
         {
-            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: folder);
+            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: folder, options: DebugPortOptions(BoardDebugPort));
             await view.EnsureCoreWebView2Async(env);
         }
         catch (Exception ex)
         {
-            // Leave nothing half-made: the next switch to this applicant tries again from scratch.
+            // Leave nothing half-made: the next switch to this board tries again from scratch.
             log.LogError(ex, "The {Board} pane failed to start for user {User}", board.DisplayName, id);
             BoardHost.Children.Remove(view);
             view.Dispose();
             boardView = null;
-            boardUserId = null;
             UpdateHuntButton();
             await ToastAsync($"{board.DisplayName} couldn't start: {ex.Message}", error: true);
             return false;
@@ -170,14 +231,73 @@ public partial class MainWindow : Window
             factor => Dispatcher.Invoke(() => view.ZoomFactor = factor));
         await surface.EnsureInstalledAsync();
         boardSurface = surface;
+
+        // Hides the board's chat overlays and prompts on every page it loads.
+        if (PageDeclutter.Script(board.HiddenClutter) is { Length: > 0 } declutter)
+            await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(declutter);
+
+        // Spectator Mode rides along on every document, dormant until armed from the Applicant
+        // tab — the same shared capability and wire protocol as Automata's "● Record" and
+        // Prose.KdpPublish's Spectator Mode toggle.
+        var recorder = new RecorderSession(view.CoreWebView2);
+        await recorder.InstallAsync();
+        var pane = new BoardPane { View = view, Surface = surface, Spectator = recorder };
+        recorder.EventCaptured += pane.SpectatorEvents.Add;
+        panes[activeBoardId] = pane;
+
         // Tell the Applicant tab whether this pane is signed in, every time it lands on a page —
-        // that's how a Google/Apple sign-in done by hand shows up as "Signed in".
-        view.CoreWebView2.NavigationCompleted += async (_, _) => await PushBoardStatusAsync(surface);
+        // that's how a Google/Apple sign-in done by hand shows up as "Signed in". Also keeps the
+        // address bar honest, and re-arms Spectator Mode on the fresh document it just navigated to.
+        view.CoreWebView2.NavigationCompleted += async (_, _) =>
+        {
+            if (ReferenceEquals(boardView, view)) UpdateUrlBar();
+            await PushBoardStatusAsync(surface);
+            await recorder.OnNavigatedAsync(view.CoreWebView2.Source);
+        };
 
         await surface.NavigateAsync(board.HomeUrl, CancellationToken.None);
         log.LogInformation("{Board} pane ready for user {User}", board.DisplayName, id);
         UpdateHuntButton();
         return true;
+    }
+
+    /// <summary>(Re)builds the tab strip from every registered board, highlighting the active one.
+    /// Cheap to call on every switch — <see cref="JobBoardRegistry"/> is small and fixed.</summary>
+    private void UpdateBoardTabs()
+    {
+        BoardTabs.Children.Clear();
+        foreach (var b in boardRegistry.All)
+        {
+            var isActive = b.Id == activeBoardId;
+            var tab = new System.Windows.Controls.Button
+            {
+                Content = b.DisplayName,
+                Style = (Style)FindResource("BarButton"),
+                Tag = b.Id,
+                Margin = new Thickness(6, 6, 0, 6),
+                FontWeight = isActive ? FontWeights.Bold : FontWeights.Normal,
+                Background = isActive ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x0A, 0x66, 0xC2)) : null!,
+            };
+            tab.Click += async (_, _) => { if (ActiveUserId is { } id) await ShowBoardForAsync(id, b.Id); };
+            BoardTabs.Children.Add(tab);
+        }
+    }
+
+    /// <summary>Reflects the active pane's current URL in the address bar — a no-op while no board
+    /// pane is showing.</summary>
+    private void UpdateUrlBar() => UrlBar.Text = boardView?.CoreWebView2?.Source ?? "";
+
+    private void OnReloadClicked(object sender, RoutedEventArgs e) => boardView?.CoreWebView2?.Reload();
+
+    /// <summary>Enter in the address bar navigates the active pane. A bare host/search term with no
+    /// scheme is sent as https:// — nobody types "https://" to look something up.</summary>
+    private void OnUrlBarKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != System.Windows.Input.Key.Enter || boardView?.CoreWebView2 is not { } core) return;
+        var text = UrlBar.Text.Trim();
+        if (text.Length == 0) return;
+        var url = text.Contains("://") ? text : $"https://{text}";
+        core.Navigate(url);
     }
 
     /// <summary>Signs the applicant in with their saved account when the pane is signed out and
@@ -200,7 +320,7 @@ public partial class MainWindow : Window
         SignInResult result;
         try
         {
-            result = await linkedInSignIn.EnsureSignedInAsync(
+            result = await boardSignIn.EnsureSignedInAsync(
                 surface, board.SignInUrl, account.SignInEmail, passwords.Get(userId, board.Id), CancellationToken.None);
         }
         catch (Exception ex) when (!ReferenceEquals(surface, boardSurface))
@@ -211,6 +331,31 @@ public partial class MainWindow : Window
         }
         if (result.Status != SignInStatus.AlreadySignedIn || force)
             await ToastAsync(result.Message, error: result.Status is SignInStatus.Failed or SignInStatus.NeedsYou);
+    }
+
+    /// <summary>Arms Spectator Mode on the currently active board pane. Sign in and search for
+    /// real, and every click/typed value/submit is captured as a self-healing fingerprint —
+    /// ground truth for writing or fixing that board's automation instead of a guess.</summary>
+    private async Task StartSpectatorAsync()
+    {
+        if (!panes.TryGetValue(activeBoardId, out var pane)) { await ToastAsync($"{board.DisplayName} is still loading. Try again in a moment.", error: true); return; }
+        pane.SpectatorEvents.Clear();
+        await pane.Spectator.ArmAsync();
+        await ToastAsync($"◉ Spectator Mode on {board.DisplayName} — perform the actions to capture, then stop it.");
+    }
+
+    private async Task StopSpectatorAsync()
+    {
+        if (!panes.TryGetValue(activeBoardId, out var pane)) return;
+        await pane.Spectator.DisarmAsync();
+        var steps = RecordingBuilder.Build(pane.SpectatorEvents);
+        pane.SpectatorEvents.Clear();
+        if (steps.Count == 0) { await ToastAsync("Spectator Mode stopped — nothing was captured."); return; }
+
+        var path = Path.Combine(KnownFolders.Downloads, $"{board.Id}-{DateTime.Now:yyyyMMdd-HHmmss}{RecordingExport.FileExtension}");
+        await File.WriteAllTextAsync(path, RecordingExport.Export(steps, DateTimeOffset.Now));
+        log.LogInformation("Spectator Mode recording saved to {Path} ({Count} steps)", path, steps.Count);
+        await ToastAsync($"Spectator Mode stopped — {steps.Count} step(s) captured, saved to {path}.");
     }
 
     // ── panel bridge ───────────────────────────────────────────────────────────────────────────
@@ -261,13 +406,29 @@ public partial class MainWindow : Window
                     await ToastAsync("Password forgotten.");
                     break;
                 case "openSignIn":
-                    if (Hunting) { await ToastAsync("The hunt is using the LinkedIn pane. Stop it first.", error: true); break; }
-                    if (boardView?.CoreWebView2 is { } pane) pane.Navigate(board.SignInUrl);
-                    else await ToastAsync($"{board.DisplayName} is still loading. Try again in a moment.", error: true);
+                    if (Hunting) { await ToastAsync($"The hunt is using the {board.DisplayName} pane. Stop it first.", error: true); break; }
+                    var openBoardId = msg!["boardId"]?.GetValue<string>() ?? board.Id;
+                    if (ActiveUserId is { } openFor)
+                    {
+                        if (openBoardId != board.Id || boardView is null) await ShowBoardForAsync(openFor, openBoardId);
+                        if (boardView?.CoreWebView2 is { } pane) pane.Navigate(board.SignInUrl);
+                        else await ToastAsync($"{board.DisplayName} is still loading. Try again in a moment.", error: true);
+                    }
                     break;
                 case "signInNow":
-                    if (Hunting) { await ToastAsync("The hunt is using the LinkedIn pane. Stop it first.", error: true); break; }
-                    if (ActiveUserId is { } signInFor) await AutoSignInAsync(signInFor, force: true);
+                    if (Hunting) { await ToastAsync($"The hunt is using the {board.DisplayName} pane. Stop it first.", error: true); break; }
+                    var signInBoardId = msg!["boardId"]?.GetValue<string>() ?? board.Id;
+                    if (ActiveUserId is { } signInFor)
+                    {
+                        if (signInBoardId != board.Id || boardView is null) await ShowBoardForAsync(signInFor, signInBoardId);
+                        await AutoSignInAsync(signInFor, force: true);
+                    }
+                    break;
+                case "startSpectator":
+                    await StartSpectatorAsync();
+                    break;
+                case "stopSpectator":
+                    await StopSpectatorAsync();
                     break;
 
                 // job requirements
@@ -455,7 +616,7 @@ public partial class MainWindow : Window
             if (cookies.Any(c => c.Name == name && c.Value.Length > 0 && (c.IsSession || c.Expires > DateTime.Now)))
                 return true;
         }
-        return await linkedInSignIn.IsSignedInAsync(surface, CancellationToken.None);
+        return await boardSignIn.IsSignedInAsync(surface, CancellationToken.None);
     }
 
     private async Task PushProfileAsync()
@@ -466,8 +627,8 @@ public partial class MainWindow : Window
             type = "profile",
             profile = user,
             passwordSaved = user is null ? new Dictionary<string, bool>()
-                : new Dictionary<string, bool> { [board.Id] = passwords.Has(user.Id, board.Id) },
-            boards = new[] { new { id = board.Id, name = board.DisplayName, signInUrl = board.SignInUrl } },
+                : boardRegistry.All.ToDictionary(b => b.Id, b => passwords.Has(user.Id, b.Id)),
+            boards = boardRegistry.All.Select(b => new { id = b.Id, name = b.DisplayName, signInUrl = b.SignInUrl }),
         });
         await PostAsync(new { type = "boardStatus", boardId = board.Id, signedIn = boardSignedIn });
     }
@@ -740,7 +901,7 @@ public partial class MainWindow : Window
         if (!await IsBoardSignedInAsync(surface))
         {
             var account = user.BoardAccounts.FirstOrDefault(a => a.BoardId == board.Id);
-            signIn = await linkedInSignIn.EnsureSignedInAsync(surface, board.SignInUrl, account?.SignInEmail, passwords.Get(userId, board.Id), CancellationToken.None);
+            signIn = await boardSignIn.EnsureSignedInAsync(surface, board.SignInUrl, account?.SignInEmail, passwords.Get(userId, board.Id), CancellationToken.None);
         }
         if (signIn.Status is not (SignInStatus.AlreadySignedIn or SignInStatus.SignedIn))
         {

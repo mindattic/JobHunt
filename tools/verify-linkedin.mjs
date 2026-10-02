@@ -77,6 +77,30 @@ function run(fixture, script, url, html) {
   check('job view: contract, hourly pay and on-site tags', ['Contract', '$70/hr - $85/hr', 'On-site'].every(t => d.insights.includes(t)), JSON.stringify(d.insights));
 }
 
+// ── the 2026 layout (/jobs/search-results/) — REAL markup captured live 2026-09-30 ─────────
+// via tools/inspect-board.mjs; images, icons, query strings and the personalized slots
+// (profile match, people who can help) scrubbed.
+{
+  const url = 'https://www.linkedin.com/jobs/search-results/?currentJobId=4449871690&keywords=.NET%20developer';
+  const r = run('search-results-2026.html', 'results.js', url);
+  const [a, b] = r.cards;
+  check('2026: state is results', r.state === 'results', r.state);
+  check('2026: two cards, ids from componentkey', r.cards.length === 2 && a.id === '4449871690' && b.id === '4471661055', r.cards.map(c => c.id).join(','));
+  check('2026: title from the Dismiss button, no "(Verified job)" suffix',
+    a.title === 'Full Stack Software Engineer 4 - Content Promotion and Distribution', a.title);
+  check('2026: company and location', a.company === 'Netflix' && a.location === 'United States (Remote)', `${a.company} | ${a.location}`);
+  check('2026: Easy Apply only where the card says so', a.quickApply === false && b.quickApply === true, `${a.quickApply} ${b.quickApply}`);
+
+  const d = run('search-results-2026.html', 'details.js', url);
+  check('2026 details: ready, for the job the pane shows', d.state === 'details' && d.id === '4449871690', `${d.state} ${d.id}`);
+  check('2026 details: title and company', d.title === 'Full Stack Software Engineer 4 - Content Promotion and Distribution' && d.company === 'Netflix', `${d.title} | ${d.company}`);
+  check('2026 details: facts split on "·"', JSON.stringify(d.facts.slice(0, 3)) === JSON.stringify(['United States', 'Reposted 6 days ago', 'Over 100 people clicked apply']), JSON.stringify(d.facts));
+  check('2026 details: location is the first fact that isn\'t a date or count', d.location === 'United States', d.location);
+  check('2026 details: workplace and type pills', JSON.stringify(d.insights) === JSON.stringify(['Remote', 'Full-time']), JSON.stringify(d.insights));
+  check('2026 details: description from About the job, block-aware', /^At Netflix, our mission/.test(d.description) && d.description.includes('\n'), JSON.stringify(d.description.slice(0, 60)));
+  check('2026 details: "Apply on company website" is external, not Easy Apply', d.apply === 'external', d.apply);
+}
+
 // ── pages that must stop a hunt ───────────────────────────────────────────────────────────
 {
   const challenge = run(null, 'results.js', 'https://www.linkedin.com/checkpoint/challenge/AgF', '<html><body><h1>Let\'s do a quick security check</h1></body></html>');

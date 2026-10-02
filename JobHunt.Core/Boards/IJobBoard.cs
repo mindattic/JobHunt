@@ -31,6 +31,10 @@ public interface IJobBoard
     /// <summary>Name of the board's one-click application ("Easy Apply"), for UI text.</summary>
     string QuickApplyName { get; }
 
+    /// <summary>CSS selectors for page clutter the pane hides (chat overlays, alert prompts) — see
+    /// <see cref="AutoWebNav.PageDeclutter"/>. Hidden, never removed, so automation is unaffected.</summary>
+    IReadOnlyList<string> HiddenClutter => [];
+
     /// <summary>The search-results URL for one term, one results page (0-based), with every
     /// filter this board can apply server-side.</summary>
     string BuildSearchUrl(string searchTerm, HuntFilters filters, int page = 0);

@@ -12,7 +12,7 @@
   var named = document.querySelectorAll('.jobs-search-results-list, .scaffold-layout__list > div, .scaffold-layout__list');
   for (var i = 0; i < named.length && !box; i++) if (scrolls(named[i])) box = named[i];
   if (!box) {
-    var card = document.querySelector('li[data-occludable-job-id], .job-card-container, .scaffold-layout__list-item, ul.jobs-search__results-list > li');
+    var card = document.querySelector('[data-view-name="job-search-job-card"], li[data-occludable-job-id], .job-card-container, .scaffold-layout__list-item, ul.jobs-search__results-list > li');
     for (var el = card && card.parentElement; el && el !== document.body && !box; el = el.parentElement) if (scrolls(el)) box = el;
   }
   if (!box) {

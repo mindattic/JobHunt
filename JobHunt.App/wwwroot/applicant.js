@@ -277,7 +277,20 @@
       var open = JH.button('Open ' + b.name + ' sign-in', null, function () { JH.post({ action: 'openSignIn', boardId: b.id }); });
       open.disabled = !working.id;
       if (!working.id) open.title = 'Save the applicant first';
-      body.appendChild(el('div', { class: 'actions' }, [open]));
+
+      // Spectator Mode: capture a real session's clicks/typing as self-healing steps, evidence
+      // for writing or fixing this board's automation instead of a guess.
+      var spectatorOn = false;
+      var spectator = JH.button('◉ Spectator Mode', null, function () {
+        spectatorOn = !spectatorOn;
+        JH.post({ action: spectatorOn ? 'startSpectator' : 'stopSpectator', boardId: b.id });
+        spectator.textContent = spectatorOn ? '◉ Stop Spectator Mode' : '◉ Spectator Mode';
+        spectator.classList.toggle('recording', spectatorOn);
+      });
+      spectator.disabled = !working.id;
+      spectator.title = 'Log in and search on ' + b.name + ' in the pane; every action is captured for fixing its automation.';
+
+      body.appendChild(el('div', { class: 'actions' }, [open, spectator]));
 
       // 2. Optional: an email + password JobHunt can re-enter if the session ever expires. Only for
       //    accounts that have a LinkedIn password — Google/Apple sign-ins don't.

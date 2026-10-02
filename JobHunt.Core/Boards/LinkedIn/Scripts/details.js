@@ -49,6 +49,75 @@
   }
   if (/\/authwall|\/login/i.test(url)) return JSON.stringify({ state: 'signedOut' });
 
+  // ── The 2026 layout (read live 2026-09-30) ─────────────────────────────────────────────────
+  // [data-view-name="job-detail-page"] with hashed classes; read by data-view-name, link shape
+  // (/jobs/view/<id>, /company/), and visible text pieces (aria-hidden subtrees skipped).
+  var page = document.querySelector('[data-view-name="job-detail-page"]');
+  if (page) {
+    var pieces = function (el) {
+      var out = [];
+      if (!el) return out;
+      var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (var t = w.nextNode(); t; t = w.nextNode()) {
+        var s = oneLine(t.textContent);
+        if (s && !t.parentElement.closest('[aria-hidden="true"]')) out.push(s);
+      }
+      return out;
+    };
+    var titleLink = page.querySelector('a[href*="/jobs/view/"]');
+    var m = (titleLink && titleLink.getAttribute('href') || '').match(/\/jobs\/view\/(?:[^\/?#]*-)?(\d{6,})/);
+    var aboutSlot = page.querySelector('[id^="JobDetails_AboutTheJob_"]');
+    var jobId = m ? m[1] : (aboutSlot ? aboutSlot.id.replace('JobDetails_AboutTheJob_', '') : '');
+
+    // The top card: the nearest ancestor of the title that also holds the apply/save buttons.
+    var top = titleLink;
+    for (var up = 0; top && top !== page && up < 15 && !top.querySelector('[data-view-name="job-apply-button"], [data-view-name="job-save-button"]'); up++) {
+      top = top.parentElement;
+    }
+    top = top || page;
+
+    var companyEl = top.querySelector('[aria-label^="Company, "]');
+    var companyName = companyEl ? companyEl.getAttribute('aria-label').replace(/^Company,\s*/, '').replace(/\.$/, '')
+      : oneLine((top.querySelector('a[href*="/company/"]') || {}).textContent);
+
+    // "United States · Reposted 6 days ago · Over 100 people clicked apply", then
+    // "Promoted by hirer · Responses managed off LinkedIn".
+    var factList = [];
+    [].forEach.call(top.querySelectorAll('p'), function (p) {
+      if (titleLink && p.contains(titleLink)) return;
+      if (p.querySelector('a[href*="/company/"]')) return;
+      pieces(p).join(' ').split(/\s*·\s*/).forEach(function (s) { s = s.trim(); if (s && factList.indexOf(s) < 0) factList.push(s); });
+    });
+
+    // Pills ("Remote", "Full-time", pay) link back into search; they carry no aria-label.
+    var insightList = [];
+    [].forEach.call(top.querySelectorAll('a[href*="/jobs/search-results/"]:not([aria-label]), a[href*="/jobs/search/"]:not([aria-label])'), function (a) {
+      var s = pieces(a).join(' ');
+      if (s && s.length < 120 && insightList.indexOf(s) < 0) insightList.push(s);
+    });
+
+    var loc = factList.filter(function (f) {
+      return f !== companyName && !/\bago\b|applicants?|clicked apply|^promoted|^reposted|responses? managed/i.test(f);
+    })[0] || '';
+    var body = blockText(page.querySelector('[id^="JobDetails_AboutTheJob_"] [data-testid="expandable-text-box"]')
+      || (aboutSlot ? aboutSlot : null));
+    body = body.replace(/^about the job\s*/i, '');
+
+    var applyBtn = page.querySelector('[data-view-name="job-apply-button"]');
+    var applyLabel = applyBtn ? oneLine(applyBtn.textContent) + ' ' + (applyBtn.getAttribute('aria-label') || '') : '';
+    var applyKind = 'none';
+    if (pieces(top).some(function (s) { return /^applied\b/i.test(s); }) || /application submitted/i.test(pieces(top).join(' '))) applyKind = 'applied';
+    else if (/easy apply/i.test(applyLabel)) applyKind = 'easy';
+    else if (/apply/i.test(applyLabel)) applyKind = 'external';
+
+    var heading = oneLine(titleLink ? titleLink.textContent : '');
+    return JSON.stringify({
+      state: heading && body ? 'details' : 'loading',
+      id: jobId, title: heading, company: companyName, location: loc, facts: factList, insights: insightList, description: body, apply: applyKind,
+    });
+  }
+
+  // ── The previous layout ────────────────────────────────────────────────────────────────────
   var root = first(document, ['.jobs-search__job-details--container', '.jobs-search__job-details', '.job-view-layout', '.jobs-details', '.details-pane__content', 'main']) || document;
 
   // The job the PANE shows — not the URL's currentJobId, which changes the instant a card is
