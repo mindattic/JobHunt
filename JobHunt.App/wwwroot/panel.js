@@ -372,5 +372,29 @@
   }
   window.chrome.webview.addEventListener('message', function (e) { JH.receive(e.data); });
 
+  // Live Observation (AutoWebNav): what an attached observer (awn-observe) reports for this pane —
+  // the app's own view of itself. The log is every toast and hunt-progress message, timestamped.
+  var observeLog = [];
+  function observeNote(text) {
+    if (!text) return;
+    observeLog.push(new Date().toTimeString().slice(0, 8) + ' ' + text);
+    if (observeLog.length > 500) observeLog.shift();
+  }
+  var receive = JH.receive;
+  JH.receive = function (m) {
+    if (m.type === 'toast') observeNote((m.error ? '⚠ ' : '') + m.text);
+    else if (m.type === 'hunt' && m.message) observeNote(m.message);
+    receive(m);
+  };
+  window.__awnObserve = function () {
+    var user = (state.users || []).find(function (u) { return u.id === state.activeId; });
+    return {
+      running: !!state.hunting,
+      summary: (user ? (user.displayName || user.fullName || ('applicant ' + user.id)) : 'no applicant') +
+        ' · ' + (state.jobs || []).length + ' best fits · ' + (state.selected ? state.selected.size : 0) + ' selected',
+      log: observeLog.slice()
+    };
+  };
+
   post({ action: 'ready' });
 })();

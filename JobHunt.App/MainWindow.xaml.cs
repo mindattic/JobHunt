@@ -53,17 +53,25 @@ public partial class MainWindow : Window
     private IJobBoard board = App.Services.GetRequiredService<JobBoardRegistry>().Get(LinkedInJobBoard.BoardId);
     private IBoardSignIn boardSignIn = App.Services.GetRequiredKeyedService<IBoardSignIn>(LinkedInJobBoard.BoardId);
 
-    /// <summary>One board's WebView2, its <see cref="IBrowserSurface"/>, and its Spectator Mode
-    /// session — created once per (applicant, board) and kept alive for as long as that applicant
-    /// is active, so switching board tabs never loses a session. Only an applicant switch tears
-    /// these down (a different person's browser profile entirely).</summary>
+    /// <summary>One board's WebView2 and its <see cref="IBrowserSurface"/> — created once per
+    /// (applicant, board) and kept alive for as long as that applicant is active, so switching board
+    /// tabs never loses a session. Only an applicant switch tears these down (a different person's
+    /// browser profile entirely).</summary>
     private sealed class BoardPane
     {
         public required WebView2 View { get; init; }
         public required WebView2BrowserSurface Surface { get; init; }
-        public required RecorderSession Spectator { get; init; }
-        public readonly List<RecorderEvent> SpectatorEvents = [];
     }
+
+    /// <summary>Live Observation (AutoWebNav): a CDP port per browser process, registered with this
+    /// PID in %LocalAppData%\MindAttic\AutoWebNav\instances, so awn-observe can attach to this
+    /// running instance. tools/inspect-board.mjs still finds the preferred ports below.</summary>
+    private readonly LiveObservation observation = new("JobHunt");
+
+    /// <summary>Always-on Spectator Mode (AutoWebNav): every board pane is recorded for the whole
+    /// session and saved to Downloads as JobHunt-session-&lt;timestamp&gt;.autowebnav-recording.json.
+    /// Replaced the per-board Spectator Mode button.</summary>
+    private readonly SessionRecording sessionRecording = new("JobHunt");
 
     /// <summary>Every board pane created for the CURRENT applicant, keyed by board id. Cleared and
     /// disposed whenever the applicant changes.</summary>
@@ -89,7 +97,12 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Title = $"JobHunt - PID: {Environment.ProcessId}";
+        Title = observation.WindowTitle;
+        Closed += (_, _) =>
+        {
+            sessionRecording.Dispose();   // final write of the session recording to Downloads
+            observation.Dispose();        // leave the instance registry
+        };
         ApplyDryRunBadge();
         UpdateBoardTabs();
         _ = InitializePanelAsync();
@@ -104,19 +117,17 @@ public partial class MainWindow : Window
 
     // ── panes ──────────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>CDP debug ports, one per WebView2 browser process: each profile folder is its own
-    /// process and only one process can hold a port. tools/inspect-board.mjs attaches to these.
-    /// Unauthenticated and local-only, open for as long as JobHunt runs.</summary>
+    /// <summary>Preferred CDP ports, one per WebView2 browser process: each profile folder is its
+    /// own process and only one process can hold a port. LiveObservation falls back to a free port
+    /// if one is taken (a second applicant's board process, say) and registers the real one, so
+    /// awn-observe always finds it; tools/inspect-board.mjs tries these first.</summary>
     private const int PanelDebugPort = 9366;
     private const int BoardDebugPort = 9367;
-
-    private static CoreWebView2EnvironmentOptions DebugPortOptions(int port) =>
-        new() { AdditionalBrowserArguments = $"--remote-debugging-port={port}" };
 
     private async Task InitializePanelAsync()
     {
         var env = await CoreWebView2Environment.CreateAsync(
-            userDataFolder: paths.PanelProfileDirectory, options: DebugPortOptions(PanelDebugPort));
+            userDataFolder: paths.PanelProfileDirectory, options: observation.OptionsFor("panel", PanelDebugPort));
         await Panel.EnsureCoreWebView2Async(env);
         Panel.CoreWebView2.SetVirtualHostNameToFolderMapping(
             "jobhunt.local", Path.Combine(AppContext.BaseDirectory, "wwwroot"), CoreWebView2HostResourceAccessKind.Allow);
@@ -150,8 +161,8 @@ public partial class MainWindow : Window
     /// <summary>Shows the board pane; false when it was already showing that applicant and board.
     /// A null <paramref name="requestedBoardId"/> keeps whichever board is already active (used on
     /// an applicant switch, which doesn't change the board). A board already open for this
-    /// applicant is just shown again — never recreated, so its session and any Spectator Mode
-    /// recording in progress survive switching tabs. Only an applicant switch tears every pane
+    /// applicant is just shown again — never recreated, so its sign-in session survives switching
+    /// tabs. Only an applicant switch tears every pane
     /// down, since each one belongs to that applicant's own browser profile.</summary>
     private async Task<bool> SwapBoardAsync(int? userId, string? requestedBoardId = null)
     {
@@ -199,7 +210,7 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(folder);
         try
         {
-            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: folder, options: DebugPortOptions(BoardDebugPort));
+            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: folder, options: observation.OptionsFor("board", BoardDebugPort));
             await view.EnsureCoreWebView2Async(env);
         }
         catch (Exception ex)
@@ -236,23 +247,18 @@ public partial class MainWindow : Window
         if (PageDeclutter.Script(board.HiddenClutter) is { Length: > 0 } declutter)
             await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(declutter);
 
-        // Spectator Mode rides along on every document, dormant until armed from the Applicant
-        // tab — the same shared capability and wire protocol as Automata's "● Record" and
-        // Prose.KdpPublish's Spectator Mode toggle.
-        var recorder = new RecorderSession(view.CoreWebView2);
-        await recorder.InstallAsync();
-        var pane = new BoardPane { View = view, Surface = surface, Spectator = recorder };
-        recorder.EventCaptured += pane.SpectatorEvents.Add;
-        panes[activeBoardId] = pane;
+        // Always-on session recording of this board pane (the surface above already installed the
+        // toolkit the recorder needs).
+        await sessionRecording.AttachAsync(activeBoardId, view.CoreWebView2, installToolkit: false);
+        panes[activeBoardId] = new BoardPane { View = view, Surface = surface };
 
         // Tell the Applicant tab whether this pane is signed in, every time it lands on a page —
         // that's how a Google/Apple sign-in done by hand shows up as "Signed in". Also keeps the
-        // address bar honest, and re-arms Spectator Mode on the fresh document it just navigated to.
+        // address bar honest.
         view.CoreWebView2.NavigationCompleted += async (_, _) =>
         {
             if (ReferenceEquals(boardView, view)) UpdateUrlBar();
             await PushBoardStatusAsync(surface);
-            await recorder.OnNavigatedAsync(view.CoreWebView2.Source);
         };
 
         await surface.NavigateAsync(board.HomeUrl, CancellationToken.None);
@@ -333,31 +339,6 @@ public partial class MainWindow : Window
             await ToastAsync(result.Message, error: result.Status is SignInStatus.Failed or SignInStatus.NeedsYou);
     }
 
-    /// <summary>Arms Spectator Mode on the currently active board pane. Sign in and search for
-    /// real, and every click/typed value/submit is captured as a self-healing fingerprint —
-    /// ground truth for writing or fixing that board's automation instead of a guess.</summary>
-    private async Task StartSpectatorAsync()
-    {
-        if (!panes.TryGetValue(activeBoardId, out var pane)) { await ToastAsync($"{board.DisplayName} is still loading. Try again in a moment.", error: true); return; }
-        pane.SpectatorEvents.Clear();
-        await pane.Spectator.ArmAsync();
-        await ToastAsync($"◉ Spectator Mode on {board.DisplayName} — perform the actions to capture, then stop it.");
-    }
-
-    private async Task StopSpectatorAsync()
-    {
-        if (!panes.TryGetValue(activeBoardId, out var pane)) return;
-        await pane.Spectator.DisarmAsync();
-        var steps = RecordingBuilder.Build(pane.SpectatorEvents);
-        pane.SpectatorEvents.Clear();
-        if (steps.Count == 0) { await ToastAsync("Spectator Mode stopped — nothing was captured."); return; }
-
-        var path = Path.Combine(KnownFolders.Downloads, $"{board.Id}-{DateTime.Now:yyyyMMdd-HHmmss}{RecordingExport.FileExtension}");
-        await File.WriteAllTextAsync(path, RecordingExport.Export(steps, DateTimeOffset.Now));
-        log.LogInformation("Spectator Mode recording saved to {Path} ({Count} steps)", path, steps.Count);
-        await ToastAsync($"Spectator Mode stopped — {steps.Count} step(s) captured, saved to {path}.");
-    }
-
     // ── panel bridge ───────────────────────────────────────────────────────────────────────────
 
     private async void OnPanelMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
@@ -423,12 +404,6 @@ public partial class MainWindow : Window
                         if (signInBoardId != board.Id || boardView is null) await ShowBoardForAsync(signInFor, signInBoardId);
                         await AutoSignInAsync(signInFor, force: true);
                     }
-                    break;
-                case "startSpectator":
-                    await StartSpectatorAsync();
-                    break;
-                case "stopSpectator":
-                    await StopSpectatorAsync();
                     break;
 
                 // job requirements
