@@ -17,8 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AutoWebNav.WebView2" Version="3.0.0" />
+    <PackageReference Include="AutoWebNav.WebView2" Version="4.0.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
+    <PackageReference Include="MindAttic.Export" Version="3.0.0" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />

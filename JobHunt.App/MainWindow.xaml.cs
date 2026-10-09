@@ -18,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
+using MindAttic.Export.Artifacts;
 
 namespace JobHunt.App;
 
@@ -753,6 +754,13 @@ public partial class MainWindow : Window
 
     // ── import / export ────────────────────────────────────────────────────────────────────────
 
+    // A Save-dialog path is exact and the dialog already confirmed any overwrite.
+    private static readonly ArtifactOptions ChosenFile = new() { Existing = ExistingArtifact.Overwrite, SanitizeName = false };
+
+    /// <summary>UTF-8 (no BOM), written atomically through MindAttic.Export.</summary>
+    private static Task WriteChosenFileAsync(string path, string content) =>
+        ArtifactWriter.WriteTextAsync(Path.GetDirectoryName(path)!, Path.GetFileName(path), content, ChosenFile);
+
     private async Task ExportProfileAsync()
     {
         if (ActiveUserId is not { } id) return;
@@ -764,7 +772,7 @@ public partial class MainWindow : Window
             Filter = $"JobHunt profile (*{ProfileTransfer.FileExtension})|*{ProfileTransfer.FileExtension}|JSON (*.json)|*.json",
         };
         if (dialog.ShowDialog(this) != true) return;
-        await File.WriteAllTextAsync(dialog.FileName, await profiles.ExportAsync(id), new System.Text.UTF8Encoding(false));
+        await WriteChosenFileAsync(dialog.FileName, await profiles.ExportAsync(id));
         log.LogInformation("Profile of user {User} exported to {Path}", id, dialog.FileName);
         await ToastAsync($"Exported to {Path.GetFileName(dialog.FileName)}.");
     }
@@ -793,7 +801,7 @@ public partial class MainWindow : Window
             Filter = $"JobHunt backup (*{DatabaseTransfer.FileExtension})|*{DatabaseTransfer.FileExtension}",
         };
         if (dialog.ShowDialog(this) != true) return;
-        await File.WriteAllTextAsync(dialog.FileName, await transfer.ExportAsync(), new System.Text.UTF8Encoding(false));
+        await WriteChosenFileAsync(dialog.FileName, await transfer.ExportAsync());
         log.LogInformation("Database exported to {Path}", dialog.FileName);
         await ToastAsync($"Exported to {Path.GetFileName(dialog.FileName)}.");
     }
