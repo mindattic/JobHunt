@@ -1,5 +1,5 @@
 ---
-description: Save the current discussion as a handoff so it survives /clear; restore with a bare 'do' or /quickload.
+description: Save the current discussion as a handoff so it survives /clear; restore with a bare 'do' or 'recover' or /quickload.
 argument-hint: "[optional note to emphasize what matters most]"
 allowed-tools: PowerShell
 ---
@@ -29,5 +29,5 @@ inside them:
 The runner never overwrites: an unconsumed earlier save is archived to
 `.prose\agent-session.json.001` (older ones shift up) before the new one is written.
 
-Then tell the user in one line that it's saved: run `/clear`, then type `do` (or `/quickload`).
+Then tell the user in one line that it's saved: run `/clear`, then type `do` or `recover` (or `/quickload`).
 Do nothing else.

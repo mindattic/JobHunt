@@ -1,5 +1,5 @@
 <#
-  UserPromptSubmit hook: a bare "do" restores the last /quicksave handoff.
+  UserPromptSubmit hook: a bare "do" or "recover" restores the last /quicksave handoff.
 
   Only the Claude Code glue lives here. Loading and archiving are the shared runner's `do`
   (..\mindattic-agent-standard\prose-agent.ps1), so this restores the same portable handoff every
@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $raw = [Console]::In.ReadToEnd()
 try { $j = $raw | ConvertFrom-Json } catch { $j = $null }
 $prompt = if ($j -and $j.prompt) { [string]$j.prompt } else { '' }
-if ($prompt -notmatch '^\s*(do|do it)\s*[.!]*\s*$') { Write-Output '{}'; exit 0 }
+if ($prompt -notmatch '^\s*(do|do it|recover)\s*[.!]*\s*$') { Write-Output '{}'; exit 0 }
 
 # <repo>\.claude\hooks\quickload-on-do.ps1 -> <repo>
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -27,7 +27,7 @@ $body = (& powershell -NoProfile -ExecutionPolicy Bypass -File $runner do -RepoR
 if ([string]::IsNullOrWhiteSpace($body)) { Write-Output '{}'; exit 0 }
 
 $text = @'
-RESUME CONTEXT (quicksave handoff, restored because the user typed "do"). The context window was
+RESUME CONTEXT (quicksave handoff, restored because the user typed "do" or "recover"). The context window was
 wiped since this was saved. Treat it as your working memory: pick up the Task, honor the
 Decisions, and continue from Next without re-asking what was settled. Open by confirming in one
 line what you're resuming. The handoff is archived (.prose\agent-session.json.001) and won't refill.
