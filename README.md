@@ -61,10 +61,10 @@ Prerequisites: Windows, the .NET 10 SDK, and the Microsoft Edge WebView2 runtime
 ```powershell
 git clone https://github.com/mindattic/JobHunt.git
 cd JobHunt
-.\launch.bat
+.\deploy.ps1 -Launch
 ```
 
-`launch.bat` runs `tools\deploy.ps1 -Launch`: it stops any running JobHunt, clears the build cache, publishes a Release build to `C:\Apps\JobHunt\` and starts that copy. Your data under `%LocalAppData%\MindAttic\JobHunt\` and your documents are never touched by a redeploy.
+`deploy.ps1` publishes a Release build to `C:\Apps\JobHunt\` and, with `-Launch`, starts that copy. It only stops a running JobHunt and republishes when source has changed since the last deploy (an unchanged repo is a fast no-op); `.\deploy.ps1 -Force` forces a clean bin/obj rebuild. The publish also writes `C:\Apps\JobHunt\deploy.bat`, the desktop shortcut target: it runs `deploy.ps1` and then starts JobHunt, so a double-click always runs current source. Your data under `%LocalAppData%\MindAttic\JobHunt\` and your documents are never touched by a redeploy.
 
 ### First run
 
