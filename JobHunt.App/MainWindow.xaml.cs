@@ -279,33 +279,21 @@ public partial class MainWindow : Window
             var tab = new System.Windows.Controls.Button
             {
                 Content = b.DisplayName,
-                Style = (Style)FindResource("BarButton"),
+                Style = (Style)FindResource("McButton"),
                 Tag = b.Id,
                 Margin = new Thickness(6, 6, 0, 6),
                 FontWeight = isActive ? FontWeights.Bold : FontWeights.Normal,
-                Background = isActive ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x0A, 0x66, 0xC2)) : null!,
             };
+            if (isActive) tab.Background = (System.Windows.Media.Brush)FindResource("JobHuntBrand");
             tab.Click += async (_, _) => { if (ActiveUserId is { } id) await ShowBoardForAsync(id, b.Id); };
             BoardTabs.Children.Add(tab);
         }
     }
 
-    /// <summary>Reflects the active pane's current URL in the address bar — a no-op while no board
-    /// pane is showing.</summary>
-    private void UpdateUrlBar() => UrlBar.Text = boardView?.CoreWebView2?.Source ?? "";
-
-    private void OnReloadClicked(object sender, RoutedEventArgs e) => boardView?.CoreWebView2?.Reload();
-
-    /// <summary>Enter in the address bar navigates the active pane. A bare host/search term with no
-    /// scheme is sent as https:// — nobody types "https://" to look something up.</summary>
-    private void OnUrlBarKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-    {
-        if (e.Key != System.Windows.Input.Key.Enter || boardView?.CoreWebView2 is not { } core) return;
-        var text = UrlBar.Text.Trim();
-        if (text.Length == 0) return;
-        var url = text.Contains("://") ? text : $"https://{text}";
-        core.Navigate(url);
-    }
+    /// <summary>Rebinds the address bar to the active pane's <see cref="CoreWebView2"/> — a no-op
+    /// (blank, disabled) while no board pane is showing. <see cref="AddressBar.Attach"/> is cheap to
+    /// call repeatedly, so this stays the same two call sites the old plain-TextBox version used.</summary>
+    private void UpdateUrlBar() => BoardAddressBar.Attach(boardView?.CoreWebView2);
 
     /// <summary>Signs the applicant in with their saved account when the pane is signed out and
     /// auto sign-in is on. Challenges (codes, CAPTCHAs) are always left to the person.</summary>
