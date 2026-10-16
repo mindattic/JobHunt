@@ -30,3 +30,4 @@ _Nothing recorded yet._
 | JH-T7 | 2026-10-14 | chore | open | NUnit tests for JobPosting.AnnualizedSalary (JobHunt.Core/Jobs/JobPosting.cs): Hour x2080, Day x260, Week x52, Month x12, Year/unset x1, null Min/Max stay null, one-sided ranges - FitScorer's salary floor compares against this and only the hourly case is exercised indirectly | — |
 | JH-T8 | 2026-10-14 | chore | open | Move JobHunt.App's Serilog daily file (%LOCALAPPDATA%\MindAttic\JobHunt\Logs) to MindAttic.Log at the Vault path, carrying old logs forward | — |
 | JH-T9 | 2026-10-15 | chore | closed | Remove duplicate command copies (/quickload, /quicksave) now centralized at the user level (~/.claude/commands) | M.FLOW-T14 |
+| JH-T10 | 2026-10-16 | chore | closed | install.ps1 adds this repo's 13 .prose/commands stubs for the shared global commands, so any LLM client finds them | mindattic-agent-standard/install.ps1 run 2026-10-16 |
