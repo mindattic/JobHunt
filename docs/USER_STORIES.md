@@ -39,3 +39,4 @@ _Nothing recorded yet._
 | JH-T16 | 2026-10-16 | docs | closed | Update USER_STORIES.md | — |
 | JH-T17 | 2026-10-19 | chore | open | Convert tracked source files to LF line endings via .gitattributes, per HOUSE-LAW-13 (low priority) | — |
 | JH-T18 | 2026-10-20 | docs | open | Publish JobHunt docs to GitHub Pages via the shared Toolkit DocFX pipeline: run adopt-docs-site.ps1 (README.md as home page, docs/*.md as articles, API reference only where the code builds in CI), enable Pages with build_type=workflow, set the repo homepage URL, retire tools/build-readme.ps1 and README.htm, confirm the docs Actions run is green and https://mindattic.github.io/JobHunt/ returns 200. Depends on MAT-T8. | — |
+| JH-T19 | 2026-10-20 | chore | closed | Move to MindAttic.Components.Wpf 19.0.0 (Mc->Ma rename): bump the PackageReference and rename every Mc-prefixed style/class reference to Ma in JobHunt.App/MainWindow.xaml and MainWindow.xaml.cs (~11 occurrences) | 11f5ce7 |
