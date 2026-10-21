@@ -4,16 +4,16 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:mc="clr-namespace:MindAttic.Components.Wpf.Controls;assembly=MindAttic.Components.Wpf"
         Title="JobHunt" Height="1000" Width="1600" MinWidth="1000" MinHeight="600"
-        WindowStartupLocation="CenterScreen" Background="{StaticResource McChrome}" Closing="OnWindowClosing">
+        WindowStartupLocation="CenterScreen" Background="{StaticResource MaChrome}" Closing="OnWindowClosing">
 
     <Window.Resources>
         <!-- JobHunt's brand colour: the Apply button and the active board tab. -->
         <SolidColorBrush x:Key="JobHuntBrand" Color="#0A66C2" />
         <!-- Re-keys the shared primary button's hover for this window. -->
-        <SolidColorBrush x:Key="McAccentHover" Color="#004182" />
+        <SolidColorBrush x:Key="MaAccentHover" Color="#004182" />
         <!-- The one button that sends applications — big, blue, and unmistakable. The light-blue
              edge keeps its outline at 3:1+ against the bar (1.4.11). -->
-        <Style x:Key="ApplyButton" TargetType="Button" BasedOn="{StaticResource McPrimaryButton}">
+        <Style x:Key="ApplyButton" TargetType="Button" BasedOn="{StaticResource MaPrimaryButton}">
             <Setter Property="Background" Value="{StaticResource JobHuntBrand}" />
             <Setter Property="BorderBrush" Value="#5AA9F5" />
             <Setter Property="FontSize" Value="18" />
@@ -37,7 +37,7 @@
              (wwwroot/panel.html) — the proven pattern from Automata and KdpPublish. -->
         <wv2:WebView2 x:Name="Panel" Grid.Row="0" Grid.Column="0" />
 
-        <GridSplitter Grid.Row="0" Grid.Column="1" Width="6" Background="{StaticResource McChromeBorder}"
+        <GridSplitter Grid.Row="0" Grid.Column="1" Width="6" Background="{StaticResource MaChromeBorder}"
                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                       ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
                       AutomationProperties.Name="Panel width" />
@@ -54,27 +54,27 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel x:Name="BoardTabs" Grid.Row="0" Orientation="Horizontal" Background="{StaticResource McChrome}" />
+            <StackPanel x:Name="BoardTabs" Grid.Row="0" Orientation="Horizontal" Background="{StaticResource MaChrome}" />
 
             <mc:AddressBar x:Name="BoardAddressBar" Grid.Row="1" ShowBackForward="False" />
 
             <Grid x:Name="BoardHost" Grid.Row="2">
-                <TextBlock x:Name="BoardPlaceholder" Foreground="{StaticResource McMuted}" FontSize="15" TextWrapping="Wrap"
+                <TextBlock x:Name="BoardPlaceholder" Foreground="{StaticResource MaMuted}" FontSize="15" TextWrapping="Wrap"
                            HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420" TextAlignment="Center"
                            Text="Add an applicant on the left. LinkedIn opens here, signed in as them." />
             </Grid>
         </Grid>
 
         <!-- Native command bar, outside both browser panes. -->
-        <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{StaticResource McChrome}" BorderBrush="{StaticResource McChromeBorder}" BorderThickness="0,1,0,0"
+        <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{StaticResource MaChrome}" BorderBrush="{StaticResource MaChromeBorder}" BorderThickness="0,1,0,0"
                 Padding="16,10">
             <DockPanel LastChildFill="False">
-                <Button x:Name="HuntButton" DockPanel.Dock="Left" Style="{StaticResource McButton}"
+                <Button x:Name="HuntButton" DockPanel.Dock="Left" Style="{StaticResource MaButton}"
                         Content="_Hunt now" IsEnabled="False" ToolTipService.ShowOnDisabled="True" Click="OnHuntClicked"
                         ToolTip="Search LinkedIn with this applicant's job requirements (Alt+H)."
                         AutomationProperties.Name="Hunt now" AutomationProperties.AcceleratorKey="Alt+H" />
                 <TextBlock x:Name="StatusText" DockPanel.Dock="Left" Margin="16,0,0,0" VerticalAlignment="Center"
-                           Foreground="{StaticResource McText}" FontSize="13" Text="Starting…"
+                           Foreground="{StaticResource MaText}" FontSize="13" Text="Starting…"
                            AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="Status" />
 
                 <Button x:Name="ApplyButton" DockPanel.Dock="Right" Style="{StaticResource ApplyButton}"

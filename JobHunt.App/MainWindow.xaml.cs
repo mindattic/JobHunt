@@ -279,7 +279,7 @@ public partial class MainWindow : Window
             var tab = new System.Windows.Controls.Button
             {
                 Content = b.DisplayName,
-                Style = (Style)FindResource("McButton"),
+                Style = (Style)FindResource("MaButton"),
                 Tag = b.Id,
                 Margin = new Thickness(6, 6, 0, 6),
                 FontWeight = isActive ? FontWeights.Bold : FontWeights.Normal,
