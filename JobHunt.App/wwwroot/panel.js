@@ -265,52 +265,13 @@
   // ── settings ──────────────────────────────────────────────────────────────────────────────
   function renderSettings() {
     var s = state.settings;
-    $('dry-run').checked = s.dryRun;
-    $('daily-cap').value = s.dailyApplyCap;
-    $('preflight').checked = s.preflightQuestionScan;
-
-    var select = $('provider');
-    select.textContent = '';
-    state.providers.forEach(function (p) {
-      var o = el('option', { value: p.id, text: p.displayName });
-      if (p.id === s.selectedLlmProvider) o.selected = true;
-      select.appendChild(o);
-    });
-
-    var keys = $('provider-keys');
-    keys.textContent = '';
-    state.providers.forEach(function (p) {
-      var area = el('textarea', { 'aria-label': p.displayName + ' API keys, one per line', placeholder: 'Paste an API key (one per line for several)', spellcheck: 'false' });
-      var stateText = p.ownKeyCount > 0 ? p.ownKeyCount + ' key' + (p.ownKeyCount > 1 ? 's' : '') + ' saved'
-        : p.hasSharedKey ? 'Using the shared MindAttic key' : 'Not configured';
-      var save = JH.button('Add', 'Add the ' + p.displayName + ' key', function () {
-        var entered = area.value.split(/\r?\n/).map(function (k) { return k.trim(); }).filter(Boolean);
-        if (!entered.length) { JH.toast('Paste a key first.', true); area.focus(); return; }
-        post({ action: 'saveKeys', provider: p.id, keys: entered });
-        area.value = '';
-      });
-      var tools = el('div', { class: 'key-tools' }, [save]);
-      if (p.ownKeyCount > 0) {
-        tools.appendChild(JH.button('Remove keys', 'Remove the saved ' + p.displayName + ' keys', function () {
-          if (window.confirm('Remove the ' + p.ownKeyCount + ' saved ' + p.displayName + ' key(s)?')) post({ action: 'clearKeys', provider: p.id });
-        }));
-      }
-      keys.appendChild(el('div', { class: 'provider-row' }, [
-        el('div', {}, [el('div', { text: p.displayName }), el('div', { class: 'key-state' + (p.ownKeyCount || p.hasSharedKey ? ' ok' : ''), text: stateText })]),
-        area, tools,
-      ]));
-    });
+    var ready = state.providers.filter(function (p) { return p.hasKey; }).map(function (p) { return p.displayName; });
+    $('vault-status').textContent = (s.dryRun ? 'Dry run is on. ' : 'Dry run is OFF: applications are real. ') +
+      'Daily cap ' + s.dailyApplyCap + '. First choice: ' + s.selectedLlmProvider + '. ' +
+      (ready.length ? 'Keys ready for ' + ready.join(', ') + '.' : 'No API key yet: add one in MindAttic Vault.');
   }
 
-  function saveSettings() {
-    post({ action: 'saveSettings', settings: {
-      selectedLlmProvider: $('provider').value,
-      dryRun: $('dry-run').checked,
-      dailyApplyCap: parseInt($('daily-cap').value, 10) || 25,
-      preflightQuestionScan: $('preflight').checked,
-    } });
-  }
-  ['dry-run', 'preflight', 'provider', 'daily-cap'].forEach(function (id) { $(id).addEventListener('change', saveSettings); });
+  $('open-vault').addEventListener('click', function () { post({ action: 'openVault' }); });
   $('export-backup').addEventListener('click', function () { post({ action: 'exportBackup' }); });
   $('import-backup').addEventListener('click', function () { post({ action: 'importBackup' }); });
 

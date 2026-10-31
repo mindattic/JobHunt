@@ -23,6 +23,7 @@ public partial class App : Application
         base.OnStartup(e);
 
         var paths = new JobHuntPaths();
+        var writeManifest = e.Args.Contains(MindAttic.Vault.Settings.Manifest.SettingsManifestCommand.Switch, StringComparer.OrdinalIgnoreCase);
         paths.EnsureCreated();
 
         Log.Logger = new LoggerConfiguration()
@@ -70,6 +71,14 @@ public partial class App : Application
             MessageBox.Show($"JobHunt couldn't open its database:\n{paths.DatabasePath}\n\n{ex.Message}\n\nDetails are in:\n{paths.LogsDirectory}",
                 "JobHunt", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
+            return;
+        }
+        if (writeManifest)
+        {
+            // Install step: import today's preferences from the database into Vault, write the manifest, exit.
+            Services.GetRequiredService<JobHunt.Core.Settings.SettingsStore>().Load();
+            Services.GetRequiredService<JobHunt.Core.Llm.ByokKeys>();
+            Shutdown();
             return;
         }
         Services.GetRequiredService<ILogger<App>>().LogInformation(

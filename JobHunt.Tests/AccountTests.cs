@@ -51,17 +51,56 @@ public class BoardPasswordsTests
 [TestFixture]
 public class ByokKeysTests
 {
+    private static (MindAttic.Vault.Credentials.NamedKeyStore Keys, MindAttic.Vault.Credentials.KeyHealthStore Health) Vault(string dir) =>
+        (new MindAttic.Vault.Credentials.NamedKeyStore(dir, new MindAttic.Vault.Credentials.KeyAssignmentStore(Path.Combine(dir, "Vault"))),
+         new MindAttic.Vault.Credentials.KeyHealthStore(Path.Combine(dir, "health")));
+
     [Test]
-    public void AddingKeys_AddsToThePool_AndBlankInputChangesNothing()
+    public void Resolve_UsesJobHuntsAssignedNamedKey_ElseTheSharedOrder()
     {
         var dir = Directory.CreateTempSubdirectory("jobhunt-keys-").FullName;
         try
         {
-            var keys = new JobHunt.Core.Llm.ByokKeys(new MindAttic.Vault.Credentials.CredentialStore(dir));
-            Assert.That(keys.AddOwnKeys("claude", ["sk-one"]), Is.EqualTo(1));
-            Assert.That(keys.AddOwnKeys("claude", ["sk-two", "sk-one", "  "]), Is.EqualTo(1), "duplicates and blanks ignored");
-            Assert.That(keys.AddOwnKeys("claude", [""]), Is.Zero);
-            Assert.That(keys.GetOwnKeys("claude"), Is.EqualTo(new[] { "sk-one", "sk-two" }), "nothing was lost");
+            var (store, health) = Vault(dir);
+            store.Add("claude", "shared", "sk-shared");
+            store.Add("claude", "jobhunt", "sk-jobhunt");
+            var keys = new JobHunt.Core.Llm.ByokKeys(new MindAttic.Vault.Credentials.KeySelector(new MindAttic.Vault.Credentials.FileKeySource(store), health));
+            Assert.That(keys.Resolve("claude"), Is.EqualTo("sk-shared"), "no assignment: the shared order");
+            store.Assignments.Set("JobHunt", "claude", ["jobhunt"]);
+            Assert.That(keys.Resolve("claude"), Is.EqualTo("sk-jobhunt"));
+            Assert.That(keys.HasKey("openai"), Is.False);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
+    public void Resolve_SkipsAKeyThatFailed_SoTheNextOneIsUsed()
+    {
+        var dir = Directory.CreateTempSubdirectory("jobhunt-keys-").FullName;
+        try
+        {
+            var (store, health) = Vault(dir);
+            store.Add("claude", "first", "sk-first");
+            store.Add("claude", "second", "sk-second");
+            health.RecordFailure("claude", "first", MindAttic.Vault.Credentials.KeyFailureKind.Auth, DateTimeOffset.UtcNow);
+            var keys = new JobHunt.Core.Llm.ByokKeys(new MindAttic.Vault.Credentials.KeySelector(new MindAttic.Vault.Credentials.FileKeySource(store), health));
+            Assert.That(keys.Resolve("claude"), Is.EqualTo("sk-second"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
+    public void JobHuntsOwnPreLampKeys_AreImportedAndStayItsActiveKey()
+    {
+        var dir = Directory.CreateTempSubdirectory("jobhunt-keys-").FullName;
+        try
+        {
+            var (store, health) = Vault(dir);
+            store.Add("claude", "shared", "sk-shared");
+            new MindAttic.Vault.Credentials.AppScopedCredentialStore("jobhunt", store.StoreFor("claude")).SetKey("claude", "sk-own");
+            MindAttic.Vault.Credentials.KeyImporter.ImportAppScopedFor("JobHunt", store);
+            var keys = new JobHunt.Core.Llm.ByokKeys(new MindAttic.Vault.Credentials.KeySelector(new MindAttic.Vault.Credentials.FileKeySource(store), health));
+            Assert.That(keys.Resolve("claude"), Is.EqualTo("sk-own"));
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

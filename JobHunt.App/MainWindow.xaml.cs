@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private readonly ProfileStore profiles = App.Services.GetRequiredService<ProfileStore>();
     private readonly SearchStore searches = App.Services.GetRequiredService<SearchStore>();
     private readonly SettingsStore settings = App.Services.GetRequiredService<SettingsStore>();
+    private bool watchingSettings;
     private readonly ByokKeys keys = App.Services.GetRequiredService<ByokKeys>();
     private readonly BoardPasswords passwords = App.Services.GetRequiredService<BoardPasswords>();
     private readonly DatabaseTransfer transfer = App.Services.GetRequiredService<DatabaseTransfer>();
@@ -343,6 +344,13 @@ public partial class MainWindow : Window
             {
                 case "ready":
                     await EnsureActiveUserIsValidAsync();
+                    if (!watchingSettings)
+                    {
+                        // Saves in MindAttic.Vault.Desktop reach the panel and the dry-run badge right away.
+                        watchingSettings = true;
+                        settings.Changed += _ => Dispatcher.BeginInvoke(async () => await PushSettingsAsync());
+                        settings.Watch();
+                    }
                     await PushSettingsAsync();
                     await PushEverythingForActiveUserAsync();
                     break;
@@ -431,17 +439,9 @@ public partial class MainWindow : Window
                     break;
 
                 // settings
-                case "saveSettings":
-                    SaveSettings(msg!["settings"]!);
-                    await PushSettingsAsync();
-                    break;
-                case "saveKeys":
-                    var provider = msg!["provider"]!.GetValue<string>();
-                    if (!LlmProviders.IsKnown(provider)) break;
-                    var added = keys.AddOwnKeys(provider, msg["keys"]!.AsArray().Select(n => n!.GetValue<string>()));
-                    log.LogInformation("BYO key pool for {Provider}: {Added} key(s) added", provider, added);
-                    await PushSettingsAsync();
-                    await ToastAsync(added == 0 ? "No new key to add." : added == 1 ? "Key added." : $"{added} keys added.", error: added == 0);
+                case "openVault":
+                    if (!MindAttic.Vault.Launch.VaultSettings.Open(JobHuntSettings.AppId))
+                        await ToastAsync($"MindAttic Vault isn't installed; edit {settings.VaultFilePath} instead.", error: true);
                     break;
                 case "exportProfile":
                     await ExportProfileAsync();
@@ -456,14 +456,6 @@ public partial class MainWindow : Window
                 case "importBackup":
                     if (Hunting) { await ToastAsync("Stop the hunt before importing a backup.", error: true); break; }
                     await ImportBackupAsync();
-                    break;
-                case "clearKeys":
-                    var clearFor = msg!["provider"]!.GetValue<string>();
-                    if (!LlmProviders.IsKnown(clearFor)) break;
-                    keys.SetOwnKeys(clearFor, []);
-                    log.LogInformation("BYO key pool cleared for {Provider}", clearFor);
-                    await PushSettingsAsync();
-                    await ToastAsync("Keys removed.");
                     break;
             }
         }
@@ -721,24 +713,11 @@ public partial class MainWindow : Window
             providers = LlmProviders.All.Select(p => new
             {
                 p.Id, p.DisplayName,
-                ownKeyCount = keys.GetOwnKeys(p.Id).Count,
-                hasSharedKey = keys.HasSharedKey(p.Id),
+                hasKey = keys.HasKey(p.Id),
             }),
         });
     }
 
-    private void SaveSettings(JsonNode node)
-    {
-        var s = settings.Current;
-        var provider = node["selectedLlmProvider"]?.GetValue<string>();
-        if (LlmProviders.IsKnown(provider)) s.SelectedLlmProvider = provider!;
-        if (node["dryRun"] is { } dry) s.DryRun = dry.GetValue<bool>();
-        if (node["dailyApplyCap"] is { } cap) s.DailyApplyCap = Math.Clamp(cap.GetValue<int>(), 1, 200);
-        if (node["preflightQuestionScan"] is { } scan) s.PreflightQuestionScan = scan.GetValue<bool>();
-        settings.Save(s);
-        log.LogInformation("Settings saved: provider {Provider}, dry run {DryRun}, daily cap {Cap}",
-            s.SelectedLlmProvider, s.DryRun, s.DailyApplyCap);
-    }
 
     // ── import / export ────────────────────────────────────────────────────────────────────────
 

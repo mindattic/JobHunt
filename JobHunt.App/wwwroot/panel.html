@@ -97,25 +97,13 @@
 
     <section id="view-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
       <div class="card">
-        <h2>Applying</h2>
-        <label class="check strong"><input type="checkbox" id="dry-run"> Dry run (recommended until you trust it)</label>
-        <p class="muted">Dry run does everything a real application does (opens the posting, fills every field,
-          uploads your résumé and cover letter, answers the questions) and stops just before the final
-          <em>Submit</em>. It's logged like a real application. Nothing reaches the employer.</p>
-        <label>Real applications per day
-          <input type="number" id="daily-cap" min="1" max="200">
-        </label>
-        <label class="check"><input type="checkbox" id="preflight"> Collect each job's screening questions while hunting</label>
-      </div>
-
-      <div class="card">
-        <h2>Your AI provider</h2>
-        <p class="muted">JobHunt uses the LLM you choose to summarize postings and tailor your documents. Bring your own
-          API key. It is stored in MindAttic Vault on this computer, never in the JobHunt database or an export.</p>
-        <label>Use first
-          <select id="provider"></select>
-        </label>
-        <div id="provider-keys"></div>
+        <h2>Settings &amp; API keys</h2>
+        <p class="muted">Applying options (dry run, the daily cap, screening questions), the AI provider and its API
+          keys are edited in MindAttic Vault, on JobHunt's tab and the Keys tab. Changes apply here as soon as you save.</p>
+        <p id="vault-status" class="muted"></p>
+        <div class="actions">
+          <button id="open-vault" type="button">Open in MindAttic Vault</button>
+        </div>
       </div>
 
       <div class="card">
