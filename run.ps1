@@ -219,6 +219,14 @@ if (-not $Force -and -not (Test-NeedsPublish)) {
         exit 1
     }
 
+    # ── MindAttic Vault settings (LAMP step 7, JH-T23) ─────────────────────
+    # Imports today's preferences once and refreshes settings.manifest.json, so MindAttic Vault shows
+    # this build's settings before JobHunt next starts.
+    $manifest = Start-Process -FilePath $exe -ArgumentList '--write-settings-manifest' -WorkingDirectory $out -Wait -PassThru
+    if ($manifest.ExitCode -ne 0) {
+        Write-Host "    (--write-settings-manifest exited $($manifest.ExitCode); JobHunt writes it on its next start)" -ForegroundColor DarkYellow
+    }
+
     # ── Summary ────────────────────────────────────────────────────────────
     Write-Host ''
     Write-Host '  Published successfully.' -ForegroundColor Green

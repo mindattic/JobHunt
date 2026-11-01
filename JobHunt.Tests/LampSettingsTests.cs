@@ -184,4 +184,14 @@ public class LampSettingsTests
         var html = File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "JobHunt.App", "wwwroot", "panel.html"));
         Assert.That(html, Does.Not.Contain("id=\"dry-run\"").And.Not.Contain("id=\"provider-keys\"").And.Contain("id=\"open-vault\""));
     }
+
+    [Test]
+    public void RunPs1_WritesTheSettingsManifestAfterPublishing()
+    {
+        // LAMP step 7 (JH-T23): a redeploy refreshes the manifest MindAttic Vault renders, not only the app's next start.
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!System.IO.Directory.Exists(System.IO.Path.Combine(root, ".git")) && !System.IO.File.Exists(System.IO.Path.Combine(root, ".git")))
+            root = System.IO.Path.GetDirectoryName(root) ?? throw new InvalidOperationException("no repo root above the tests");
+        Assert.That(System.IO.File.ReadAllText(System.IO.Path.Combine(root, "run.ps1")), Does.Contain("-ArgumentList '--write-settings-manifest'"));
+    }
 }
