@@ -42,3 +42,6 @@ _Nothing recorded yet._
 | JH-T19 | 2026-10-20 | chore | closed | Move to MindAttic.Components.Wpf 19.0.0 (Mc->Ma rename): bump the PackageReference and rename every Mc-prefixed style/class reference to Ma in JobHunt.App/MainWindow.xaml and MainWindow.xaml.cs (~11 occurrences) | 11f5ce7 |
 | JH-T20 | 2026-10-22 | docs | closed | Update USER_STORIES.md | — |
 | JH-T21 | 2026-10-24 | docs | closed | Update USER_STORIES.md | — |
+| JH-T22 | 2026-10-31 | feature | closed | LAMP: move JobHunt's app-level settings and keys to MindAttic.Vault.Desktop (manifest, LoadOrSeed, shared named keys, cog opens Vault) | 24f105e LampSettingsTests ByokKeysTests (146/146) |
+| JH-T23 | 2026-10-31 | fix | closed | run.ps1 doesn't run the published exe with --write-settings-manifest (LAMP playbook step 7), so after a redeploy MindAttic Vault keeps showing the old settings manifest until the app next runs (found verifying M.VALT-T73) | b6ef574 LampSettingsTests.RunPs1_WritesTheSettingsManifestAfterPublishing |
+| JH-T24 | 2026-10-31 | docs | closed | Update USER_STORIES.md | — |
