@@ -44,8 +44,11 @@
     return clean(out.join(''));
   }
 
+  // A challenge-iframe selector also matches real job pages (same false positive as results.js,
+  // JH-T28), so the iframe check only counts when no job title/description rendered (JH-T29).
   if (/challenge|captcha|checkpoint|blocked/i.test(location.pathname) ||
-      document.querySelector('iframe[src*="hcaptcha.com"], iframe[src*="recaptcha"], iframe[src*="challenges.cloudflare.com"], #cf-challenge-running')) {
+      (document.querySelector('iframe[src*="hcaptcha.com"], iframe[src*="recaptcha"], iframe[src*="challenges.cloudflare.com"], #cf-challenge-running') &&
+       !document.querySelector('[data-testid="vj-job-title"], [data-testid="jobsearch-JobInfoHeader-title"], [data-testid="vj-job-description-heading"], #jobDescriptionText'))) {
     return JSON.stringify({ state: 'challenge' });
   }
   if (/secure\.indeed\.com\/auth|\/account\/login/i.test(location.href)) return JSON.stringify({ state: 'signedOut' });
@@ -105,6 +108,11 @@
   else if (/apply on company site|apply now/i.test(actionText)) apply = 'external';
 
   var ready = !!(title && description);
+  // Cloudflare's own interstitials ("Request Blocked" / "Additional Verification Required")
+  // render no iframe, only this text (JH-T29, as in results.js).
+  if (!ready && /request blocked|additional verification required|you have been blocked/i.test(clean(document.body ? document.body.textContent : ''))) {
+    return JSON.stringify({ state: 'challenge' });
+  }
   return JSON.stringify({
     state: ready ? 'details' : 'loading',
     id: id, title: title, company: company, location: location_, facts: facts, insights: insights, description: description, apply: apply,
