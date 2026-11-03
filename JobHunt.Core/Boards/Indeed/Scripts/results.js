@@ -37,8 +37,11 @@
   }
 
   var url = location.href;
+  // A live results page (checked 2026-11-03, JH-T28) matched one of these challenge-iframe
+  // selectors while showing 16 job cards, so the iframe check only counts when no cards rendered.
   if (/challenge|captcha|checkpoint|blocked/i.test(location.pathname) ||
-      document.querySelector('iframe[src*="hcaptcha.com"], iframe[src*="recaptcha"], iframe[src*="challenges.cloudflare.com"], #cf-challenge-running')) {
+      (document.querySelector('iframe[src*="hcaptcha.com"], iframe[src*="recaptcha"], iframe[src*="challenges.cloudflare.com"], #cf-challenge-running') &&
+       !document.querySelector('div.cardOutline, div.result'))) {
     return JSON.stringify({ state: 'challenge', cards: [] });
   }
   if (/secure\.indeed\.com\/auth|\/account\/login/i.test(url)) return JSON.stringify({ state: 'signedOut', cards: [] });
@@ -71,6 +74,9 @@
 
   if (!cards.length) {
     var body = clean(document.body ? document.body.textContent : '');
+    // Cloudflare's own interstitials (seen live 2026-11-03): "Request Blocked" / "Additional
+    // Verification Required" pages render no iframe, only this text.
+    if (/request blocked|additional verification required|you have been blocked/i.test(body)) return JSON.stringify({ state: 'challenge', cards: [] });
     if (/did not match any jobs|no results found|no jobs found/i.test(body)) return JSON.stringify({ state: 'noResults', cards: [] });
     return JSON.stringify({ state: 'loading', cards: [] });
   }
