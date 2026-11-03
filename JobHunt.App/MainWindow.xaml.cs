@@ -286,7 +286,12 @@ public partial class MainWindow : Window
                 FontWeight = isActive ? FontWeights.Bold : FontWeights.Normal,
             };
             if (isActive) tab.Background = (System.Windows.Media.Brush)FindResource("JobHuntBrand");
-            tab.Click += async (_, _) => { if (ActiveUserId is { } id) await ShowBoardForAsync(id, b.Id); };
+            tab.Click += async (_, _) =>
+            {
+                // Switching hides (collapses) the pane the hunt is driving and re-points board/boardSignIn.
+                if (Hunting) { await ToastAsync($"The hunt is using the {board.DisplayName} pane. Stop it first.", error: true); return; }
+                if (ActiveUserId is { } id) await ShowBoardForAsync(id, b.Id);
+            };
             BoardTabs.Children.Add(tab);
         }
     }
@@ -435,7 +440,9 @@ public partial class MainWindow : Window
                     var url = msg!["url"]!.GetValue<string>();
                     // Only the board's own site opens in the (signed-in) board pane. Compare the
                     // parsed host: a prefix check would let "linkedin.com.evil.example" through.
-                    if (IsBoardUrl(url)) boardView?.CoreWebView2?.Navigate(url);
+                    if (!IsBoardUrl(url)) break;
+                    if (Hunting) { await ToastAsync($"The hunt is using the {board.DisplayName} pane. Stop it first.", error: true); break; }
+                    boardView?.CoreWebView2?.Navigate(url);
                     break;
 
                 // settings
@@ -659,7 +666,9 @@ public partial class MainWindow : Window
         var saved = await searches.SaveAsync(search);
         await PostAsync(new { type = "search", search = saved, preview = PreviewUrls(saved) });
 
-        if (preview && boardView?.CoreWebView2 is null)
+        if (preview && Hunting)
+            await ToastAsync($"Saved. The hunt is using the {board.DisplayName} pane; preview it once the hunt stops.", error: true);
+        else if (preview && boardView?.CoreWebView2 is null)
             await ToastAsync($"{board.DisplayName} is still loading. Try again in a moment.", error: true);
         else if (preview && saved.SearchTerms.Count > 0)
         {

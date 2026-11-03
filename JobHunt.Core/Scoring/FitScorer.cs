@@ -60,7 +60,7 @@ public sealed class FitScorer
             if (f.MinAnnualSalary is > 0 && annualMax < f.MinAnnualSalary)
                 yield return $"Pays up to {Money(annualMax.Value)}/yr, below your {Money(f.MinAnnualSalary.Value)} minimum";
             if (f.MinHourlyRate is > 0 && annualMax / 2080m < f.MinHourlyRate)
-                yield return $"Pays up to {annualMax.Value / 2080m:C0}/hr, below your {f.MinHourlyRate.Value:C0}/hr minimum";
+                yield return $"Pays up to {Dollars(annualMax.Value / 2080m)}/hr, below your {Dollars(f.MinHourlyRate.Value)}/hr minimum";
         }
 
         if (f.MinContractMonths is > 0 && job.ContractMonths is { } months &&
@@ -176,7 +176,10 @@ public sealed class FitScorer
 
     private static string Money(decimal amount) => amount >= 1000
         ? $"${Math.Round(amount / 1000m):0}k"
-        : amount.ToString("C0", CultureInfo.GetCultureInfo("en-US"));
+        : Dollars(amount);
+
+    /// <summary>Minimums are dollars, so always "$45" — never the machine's own currency symbol.</summary>
+    private static string Dollars(decimal amount) => amount.ToString("C0", CultureInfo.GetCultureInfo("en-US"));
 
     /// <summary>Lower-cased title words. ".NET" and "C#" survive intact — splitting on punctuation
     /// would turn ".NET Developer" into "net developer" and "C#" into "c".</summary>

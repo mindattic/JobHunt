@@ -19,7 +19,8 @@ public static partial class LinkedInText
         var m = Ago().Match(text);
         if (!m.Success) return null;
         var raw = m.Groups["n"].Value;
-        var n = raw.StartsWith('a') ? 1 : int.Parse(raw, CultureInfo.InvariantCulture);   // "a week ago"
+        // "a week ago" / "A week ago" — the regex is case-insensitive, so the article can be "A"/"An".
+        var n = char.IsLetter(raw[0]) ? 1 : int.Parse(raw, CultureInfo.InvariantCulture);
         return m.Groups["unit"].Value.ToLowerInvariant() switch
         {
             var u when u.StartsWith("sec") => now.AddSeconds(-n),
