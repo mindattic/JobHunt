@@ -28,7 +28,9 @@ public sealed record ListingCard(
     bool Applied,
     bool Promoted);
 
-public sealed record ResultsPage(ResultsState State, IReadOnlyList<ListingCard> Cards, string Url)
+/// <param name="HasNextPage">What the page's own pager says: true/false when the board reports it,
+/// null when it doesn't (the runner then falls back to comparing the card count to the page size).</param>
+public sealed record ResultsPage(ResultsState State, IReadOnlyList<ListingCard> Cards, string Url, bool? HasNextPage = null)
 {
     public static ResultsPage Of(ResultsState state, string url) => new(state, [], url);
 }

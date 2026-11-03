@@ -1,5 +1,9 @@
 // Reads an Indeed job-search results page (or the signed-in home feed). Returns JSON:
-//   { state: results|noResults|signedOut|challenge|loading, cards: [{ id, title, company, location, quickApply, applied, promoted, salary }] }
+//   { state: results|noResults|signedOut|challenge|loading, cards: [{ id, title, company, location, quickApply, applied, promoted, salary }],
+//     pageStart, nextStart, paginated }
+// pageStart is this page's `start` offset (0 when absent); nextStart is the `start` offset of the
+// live next-page link (null when there is none); paginated says a pager was found at all, so a
+// missing next link means "last page" rather than "couldn't tell".
 // Selectors read from Indeed's live markup through tools/inspect-board.mjs (2026-09-30): a card is
 // div.cardOutline (also .result, plus a job_<jk> class); the job key lives on the inner title link
 // a.jcs-JobTitle[data-jk], not on the card; company/location/salary carry data-testid hooks. The
@@ -70,5 +74,21 @@
     if (/did not match any jobs|no results found|no jobs found/i.test(body)) return JSON.stringify({ state: 'noResults', cards: [] });
     return JSON.stringify({ state: 'loading', cards: [] });
   }
-  return JSON.stringify({ state: 'results', cards: cards });
+
+  function startOf(href) {
+    try {
+      var v = new URL(href, location.href).searchParams.get('start');
+      var n = v == null ? 0 : parseInt(v, 10);
+      return isNaN(n) ? null : n;
+    } catch (e) { return null; }
+  }
+  var pager = document.querySelector('nav[aria-label="pagination" i], nav[role="navigation"] [data-testid^="pagination-page"], [data-testid^="pagination-page"]');
+  var next = document.querySelector('a[data-testid="pagination-page-next"], a[aria-label="Next Page"], a[aria-label="Next" i]');
+  var nextStart = next && next.getAttribute('href') ? startOf(next.getAttribute('href')) : null;
+  return JSON.stringify({
+    state: 'results', cards: cards,
+    pageStart: startOf(location.href) || 0,
+    nextStart: nextStart,
+    paginated: !!(pager || next),
+  });
 })()

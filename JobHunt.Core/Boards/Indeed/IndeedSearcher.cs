@@ -36,7 +36,18 @@ internal static class IndeedScripts
 public sealed class IndeedSearcher(IBrowserSurface browser, IActionPacer pacer, ILogger log,
     string baseUrl = IndeedJobBoard.DefaultBaseUrl) : IBoardSearcher
 {
-    public int PageSize => 15;
+    /// <summary>
+    /// The results-offset step between pages, read from the live next-page link (its <c>start</c>
+    /// minus this page's). Until a page has shown one, <see cref="DefaultPageSize"/> — the step
+    /// <see cref="IndeedJobBoard.BuildSearchUrl"/> pages by. Not a fixed card count: Indeed mixes
+    /// sponsored cards in, so a page can hold more cards than the offset advances.
+    /// </summary>
+    public int PageSize => observedPageSize ?? DefaultPageSize;
+
+    /// <summary>Indeed's <c>start</c> step when no next-page link has been seen yet.</summary>
+    public const int DefaultPageSize = 10;
+
+    private int? observedPageSize;
 
     public TimeSpan ResultsTimeout { get; init; } = TimeSpan.FromSeconds(25);
     public TimeSpan DetailsTimeout { get; init; } = TimeSpan.FromSeconds(15);
@@ -44,7 +55,7 @@ public sealed class IndeedSearcher(IBrowserSurface browser, IActionPacer pacer, 
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    private sealed record ResultsJson(string State, List<CardJson>? Cards);
+    private sealed record ResultsJson(string State, List<CardJson>? Cards, int? PageStart = null, int? NextStart = null, bool Paginated = false);
     private sealed record CardJson(string Id, string Title, string Company, string Location, bool QuickApply, bool Applied, bool Promoted);
     private sealed record DetailsJson(string State, string? Id, string? Title, string? Company, string? Location,
         List<string>? Facts, List<string>? Insights, string? Description, string? Apply);
@@ -83,8 +94,11 @@ public sealed class IndeedSearcher(IBrowserSurface browser, IActionPacer pacer, 
             .Where(c => !string.IsNullOrWhiteSpace(c.Id))
             .Select(c => new ListingCard(c.Id, c.Title, c.Company, c.Location, c.QuickApply, c.Applied, c.Promoted))
             .ToList();
-        log.LogInformation("Read {Count} cards from {Url}", cards.Count, url);
-        return new ResultsPage(ResultsState.Results, cards, url);
+        if (page.NextStart is int nextStart && nextStart > (page.PageStart ?? 0))
+            observedPageSize = nextStart - (page.PageStart ?? 0);
+        bool? hasNext = page.NextStart != null ? true : page.Paginated ? false : null;
+        log.LogInformation("Read {Count} cards from {Url} (page size {PageSize}, next page {HasNext})", cards.Count, url, PageSize, hasNext?.ToString() ?? "unknown");
+        return new ResultsPage(ResultsState.Results, cards, url, hasNext);
     }
 
     public async Task<ListingDetails?> OpenListingAsync(ListingCard card, CancellationToken ct)

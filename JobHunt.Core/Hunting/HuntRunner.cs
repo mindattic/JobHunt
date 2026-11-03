@@ -93,7 +93,10 @@ public sealed class HuntRunner(
                         if (outcome.Status == JobStatus.Recommended) recommended++;
                     }
 
-                    if (results.Cards.Count < searcher.PageSize) break;   // last page
+                    // Last page: the board's own pager says so when it reports one; otherwise a
+                    // short page (fewer cards than the board's page size) is the last.
+                    if (results.HasNextPage == false) break;
+                    if (results.HasNextPage != true && results.Cards.Count < searcher.PageSize) break;
                     await pacer.PauseAsync(ct);
                 }
             }
