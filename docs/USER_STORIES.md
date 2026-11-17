@@ -38,16 +38,18 @@ _Nothing recorded yet._
 | JH-T15 | 2026-10-16 | feature | open | Log to MindAttic.Log (3.0.0): every app/CLI entry point writes to the standalone MindAttic.Log.db Vault assigns this app (VaultPaths.LoggingDbPath, MindAttic.Vault 6.0.0) through Serilog's WriteToMindAtticLog, tagged with its Component; log startup, user actions that change data, failures and unhandled exceptions (UI thread, AppDomain, unobserved tasks); tests point the log at a temp file. Pattern: MindAttic.Workflow WorkflowLog (M.FLOW-T92), MindAttic.Orchestrator OrchestratorLog | M.FLOW-T92 |
 | JH-T16 | 2026-10-16 | docs | closed | Update USER_STORIES.md | — |
 | JH-T17 | 2026-10-19 | chore | wont-do | Convert tracked source files to LF line endings via .gitattributes, per HOUSE-LAW-13 (low priority) | — |
-| JH-T18 | 2026-10-20 | docs | open | Publish JobHunt docs to GitHub Pages via the shared Agency DocFX pipeline: run adopt-docs-site.ps1 (README.md as home page, docs/*.md as articles, API reference only where the code builds in CI), enable Pages with build_type=workflow, set the repo homepage URL, retire tools/build-readme.ps1 and README.htm, confirm the docs Actions run is green and https://mindattic.github.io/JobHunt/ returns 200. Depends on MAT-T8. | — |
+| JH-T18 | 2026-10-20 | docs | closed | Publish JobHunt docs to GitHub Pages via the shared Agency DocFX pipeline: run adopt-docs-site.ps1 (README.md as home page, docs/*.md as articles, API reference only where the code builds in CI), enable Pages with build_type=workflow, set the repo homepage URL, retire tools/build-readme.ps1 and README.htm, confirm the docs Actions run is green and https://mindattic.github.io/JobHunt/ returns 200. Depends on MAT-T8. | — |
 | JH-T19 | 2026-10-20 | chore | closed | Move to MindAttic.Components.Wpf 19.0.0 (Mc->Ma rename): bump the PackageReference and rename every Mc-prefixed style/class reference to Ma in JobHunt.App/MainWindow.xaml and MainWindow.xaml.cs (~11 occurrences) | 11f5ce7 |
 | JH-T20 | 2026-10-22 | docs | closed | Update USER_STORIES.md | — |
 | JH-T21 | 2026-10-24 | docs | closed | Update USER_STORIES.md | — |
 | JH-T22 | 2026-10-31 | feature | closed | LAMP: move JobHunt's app-level settings and keys to MindAttic.Vault.Desktop (manifest, LoadOrSeed, shared named keys, cog opens Vault) | 24f105e LampSettingsTests ByokKeysTests (146/146) |
 | JH-T23 | 2026-10-31 | fix | closed | run.ps1 doesn't run the published exe with --write-settings-manifest (LAMP playbook step 7), so after a redeploy MindAttic Vault keeps showing the old settings manifest until the app next runs (found verifying M.VALT-T73) | b6ef574 LampSettingsTests.RunPs1_WritesTheSettingsManifestAfterPublishing |
 | JH-T24 | 2026-10-31 | docs | closed | Update USER_STORIES.md | — |
-| JH-T25 | 2026-11-02 | docs | open | Adopt MindAttic.Agency docs-site pipeline, publish README to GitHub Pages (HOUSE-LAW-14) | — |
+| JH-T25 | 2026-11-02 | docs | closed | Adopt MindAttic.Agency docs-site pipeline, publish README to GitHub Pages (HOUSE-LAW-14) | — |
 | JH-T26 | 2026-11-02 | fix | closed | Bughunt sweep, two passes: find and fix real bugs across tracked source (user request 2026-11-02) | — |
 | JH-T27 | 2026-11-02 | fix | closed | Fix the open item the 2026-11-02 bughunt left for decision (Indeed page size from the live next-page link offset) | — |
 | JH-T28 | 2026-11-03 | fix | closed | Check the Indeed board selectors (next-page link offset, pager end detection, from JH-T27) against a live Indeed search page and correct them | 1cf1504 (live check page 1 only; page 2 + last-page pager behind Cloudflare) |
 | JH-T29 | 2026-11-03 | fix | closed | Indeed details.js challenge check reports a challenge on real job pages (same false positive JH-T28 fixed in results.js) and misses Cloudflare block pages | 9be873a |
 | JH-T30 | 2026-11-10 | chore | closed | Crash recovery: commit the command-catalog sync (.agent/commands/*.md) and regenerated docs/USER_STORIES.md left uncommitted by the session crash | — |
+| JH-T31 | 2026-11-10 | chore | closed | Adopt the shared docs-site pipeline: turn on GitHub Pages | — |
+| JH-T32 | 2026-11-17 | docs | closed | Update USER_STORIES.md | — |
