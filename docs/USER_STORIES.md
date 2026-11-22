@@ -53,3 +53,7 @@ _Nothing recorded yet._
 | JH-T30 | 2026-11-10 | chore | closed | Crash recovery: commit the command-catalog sync (.agent/commands/*.md) and regenerated docs/USER_STORIES.md left uncommitted by the session crash | — |
 | JH-T31 | 2026-11-10 | chore | closed | Adopt the shared docs-site pipeline: turn on GitHub Pages | — |
 | JH-T32 | 2026-11-17 | docs | closed | Update USER_STORIES.md | — |
+| JH-T33 | 2026-11-22 | feature | open | Add MindAttic.Log 3.0.0 and Serilog WriteToMindAtticLog configured from VaultPaths.LoggingDbPath with Component tag at every app/CLI entry point | — |
+| JH-T34 | 2026-11-22 | feature | open | Log startup, data-changing user actions, failures, and unhandled exceptions (UI thread, AppDomain, unobserved tasks) | — |
+| JH-T35 | 2026-11-22 | feature | open | Make tests point the log at a temp file and cover the logging setup | — |
+| JH-T36 | 2026-11-22 | docs | closed | 2026-11-22 morning | — |
