@@ -50,11 +50,12 @@
   }
 
   var url = location.href;
-  if (/\/checkpoint\/|\/challenge|captcha|\/uas\/login-submit/i.test(url) ||
+  var path = location.pathname;
+  if (/^\/(checkpoint\/|challenge|uas\/login-submit)/i.test(path) ||
       document.querySelector('iframe[src*="captcha"], #captcha-internal, form[action*="checkpoint"]')) {
     return JSON.stringify({ state: 'challenge', cards: [] });
   }
-  if (/\/authwall|\/login|\/signup/i.test(url)) return JSON.stringify({ state: 'signedOut', cards: [] });
+  if (/^\/((?:uas|m)\/login|authwall|login|signup)/i.test(path)) return JSON.stringify({ state: 'signedOut', cards: [] });
 
   // ── The 2026 layout (/jobs/search-results/, read live 2026-09-30) ──────────────────────────
   // Hashed class names everywhere; the stable hooks are data-view-name and the card's

@@ -43,11 +43,14 @@
     return clean(out.join(''));
   }
 
+  // Path-anchored: a job slug (/jobs/view/login-engineer-123, /jobs/view/challenge-manager-123) or a
+  // query holding "captcha" must not read as a challenge or a sign-in wall (JH-T41, same class as JH-T38).
   var url = location.href;
-  if (/\/checkpoint\/|\/challenge|captcha/i.test(url) || document.querySelector('iframe[src*="captcha"], #captcha-internal')) {
+  var path = location.pathname;
+  if (/^\/(checkpoint\/|challenge)/i.test(path) || document.querySelector('iframe[src*="captcha"], #captcha-internal')) {
     return JSON.stringify({ state: 'challenge' });
   }
-  if (/\/authwall|\/login/i.test(url)) return JSON.stringify({ state: 'signedOut' });
+  if (/^\/((?:uas|m)\/login|authwall|login)/i.test(path)) return JSON.stringify({ state: 'signedOut' });
 
   // ── The 2026 layout (read live 2026-09-30) ─────────────────────────────────────────────────
   // [data-view-name="job-detail-page"] with hashed classes; read by data-view-name, link shape
