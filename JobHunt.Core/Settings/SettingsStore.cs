@@ -69,9 +69,17 @@ public sealed class SettingsStore(IDbContextFactory<JobHuntDb> dbFactory, JsonSe
 
     private void Refresh()
     {
-        var row = Current;
-        vault.Load().ApplyTo(row);
-        Changed?.Invoke(row);
+        // Runs on a timer thread: an exception here would end the process. A file caught
+        // half-written just keeps the current settings; the save's next event refreshes again.
+        try
+        {
+            var row = Current;
+            vault.Load().ApplyTo(row);
+            Changed?.Invoke(row);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+        }
     }
 
     public void Dispose()
