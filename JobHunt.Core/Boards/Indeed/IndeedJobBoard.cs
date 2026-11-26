@@ -59,7 +59,9 @@ public sealed class IndeedJobBoard(ILoggerFactory? logs = null, string? baseUrl 
         if (filters.DistanceMiles is > 0) q.Add(("radius", filters.DistanceMiles.Value.ToString()));
 
         var jobTypes = filters.EmploymentTypes.Select(JobTypeCode).Where(c => c != null).Distinct().ToList();
-        if (jobTypes.Count > 0) q.Add(("jt", jobTypes[0]!)); // Indeed's jt takes one value, not a list.
+        // Indeed's jt takes one value, not a list: with several types allowed, leave it off rather
+        // than drop the others server-side (FitScorer enforces the allowed types afterwards).
+        if (jobTypes.Count == 1) q.Add(("jt", jobTypes[0]!));
 
         var fromAge = filters.DatePosted switch
         {
