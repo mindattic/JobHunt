@@ -21,11 +21,14 @@ public static class BoardChallengeHeuristics
         })()
         """;
 
-    /// <summary>True when the URL's path/query looks like a challenge page, or the DOM shows a
+    /// <summary>True when the URL's path looks like a challenge page, or the DOM shows a
     /// CAPTCHA/WAF widget or "prove you're human"-style text.</summary>
     public static async Task<bool> LooksLikeChallengeAsync(string url, IBrowserSurface browser, CancellationToken ct)
     {
-        if (System.Text.RegularExpressions.Regex.IsMatch(url, ChallengeUrlPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        // The PATH only: a page whose query or host merely contains "verify" (a search for
+        // "verification engineer", a ?continue= URL) is not a challenge.
+        var path = Uri.TryCreate(url, UriKind.Absolute, out var parsed) ? parsed.AbsolutePath : url.Split('?', '#')[0];
+        if (System.Text.RegularExpressions.Regex.IsMatch(path, ChallengeUrlPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
             return true;
         try
         {
