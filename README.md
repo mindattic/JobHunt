@@ -61,10 +61,10 @@ Prerequisites: Windows, the .NET 10 SDK, and the Microsoft Edge WebView2 runtime
 ```powershell
 git clone https://github.com/mindattic/JobHunt.git
 cd JobHunt
-.\run.ps1 -Launch
+.\run.ps1 -Redeploy -RunRelease
 ```
 
-`run.ps1` publishes a Release build to `C:\Apps\JobHunt\` and, with `-Launch`, starts that copy. It only stops a running JobHunt and republishes when source has changed since the last deploy (an unchanged repo is a fast no-op); `.\run.ps1 -Force` forces a clean bin/obj rebuild. Every run also writes `C:\Apps\JobHunt\run.bat`, the desktop shortcut target (`.\run.ps1 -LauncherOnly` writes just that, without building): a double-click opens a menu, **1) Deploy & Run** (runs `run.ps1 -Force`, then starts JobHunt) or **2) Run** (starts the already-deployed copy as is). Your data under `%LocalAppData%\MindAttic\JobHunt\` and your documents are never touched by a redeploy.
+`run.ps1` and `run.bat` are the MindAttic standard run menu: **1) Redeploy** builds Debug and Release into `R:\MindAttic\Apps\JobHunt\Debug` and `\Release` (stopping a JobHunt that runs from there), **2) Run Debug** starts the Debug copy, and **3) Run Release** starts the installed Release copy without building. Picks combine: `13` (or `-Redeploy -RunRelease`, as above) is Deploy & Run. A double-click on `run.bat` opens the menu, and `-DryRun` prints what would be built and launched. Each Release redeploy refreshes JobHunt's MindAttic Vault settings manifest. Your data under `%LocalAppData%\MindAttic\JobHunt\` and your documents are never touched by a redeploy.
 
 ### First run
 
